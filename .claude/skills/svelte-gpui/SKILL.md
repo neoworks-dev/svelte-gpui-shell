@@ -7,7 +7,7 @@ svelte-gpui runs Svelte 5 in QuickJS inside a Rust host that draws with GPUI. Ru
 snippets, `{#each}`, `svelte/motion` and stores work as on the web. **There is no
 browser underneath.** HTML elements, CSS, `class`, the DOM API and `localStorage`
 do not exist. Code written from web habits compiles and then draws nothing. `fetch`,
-`WebSocket` and a `files` API do exist, run by the host (`docs/io.md`).
+`WebSocket`, a `files` API, `processes` and `unixSockets` do exist, run by the host (`docs/io.md`).
 
 Full docs: `docs/` in the svelte-gpui repo. Start at `docs/README.md`. The types in
 `runtime/ui/style.ts`, `runtime/ui/events.ts` and each `runtime/ui/*.svelte` `Props`
@@ -102,6 +102,20 @@ A theme is plain data: exported `Style` objects spread together, or combined wit
 - **File access is unlimited unless the app declares a limit:**
   `start(App, {}, { files: { allow: ["$data/my-app"] } })`. Dialog picks are always
   allowed. The `--allow-files` host flag narrows it further.
+- **`processes`** (from `@neoworks/svelte-gpui`) runs programs from an argv list, no shell:
+  - `run(argv, { stdin?, cwd?, env?, timeout? })` resolves `{ status, signal?, stdout, stderr }`
+    once the program exits; a failure status still resolves.
+  - `spawn(argv, { onStdout?, onStderr?, onExit?, onError? })` returns a handle at once, with
+    per-line callbacks, `write`, `closeStdin`, `kill(signal?)` and `exited`. Programs still
+    running when the app quits or reloads are killed.
+  - `env()` reads the host's environment. Errors are `ProcessError` (`code`).
+  - Unlimited unless `start(App, {}, { process: { allow: ["nmcli", "/usr/bin/x"] } })`.
+- **`unixSockets`** talks to local daemons: `request(path, data)` (writes, reads to EOF, resolves
+  text; `requestBytes` for bytes), `connect(path, { onLine, onClose, onOpen, onError })` with
+  `write`/`close`/`closed`, and `serve(path, handler, { framing })` where the handler gets each
+  request's text and returns the answer (or a promise); `framing` is `"eof"` or `"line"`. Errors
+  are `SocketError`. Unlimited unless `start(App, {}, { sockets: { allow: ["$runtime/hypr"] } })`.
+  `files.paths().runtime` is `XDG_RUNTIME_DIR`.
 
 ## Rust commands and packaging
 

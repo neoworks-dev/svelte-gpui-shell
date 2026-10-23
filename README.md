@@ -91,7 +91,7 @@ id, version and icon live in its `package.json`. See [docs/packaging.md](docs/pa
   (`render/`). Large, stable parts of the tree become cached GPUI views, so a change
   elsewhere does not rebuild them. `workbench/` is the window: input, focus, the clock
   and what it reports back to the app.
-- **Network and files** (`fetch`, `WebSocket`, `files`) run on threads in the host
+- **Network, files, processes and unix sockets** (`fetch`, `WebSocket`, `files`, `processes`, `unixSockets`) run on threads in the host
   (`host/src/io/`), and each result reaches the app as soon as it arrives. See
   [docs/io.md](docs/io.md).
 - **Your own Rust code** is called with `invoke(name, args)` and pushes events with
