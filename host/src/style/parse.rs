@@ -81,6 +81,8 @@ impl Style {
                 let y = parts.get(1).copied().flatten().unwrap_or(0.0);
                 self.translate = Some((x, y));
             }
+            "scale" => self.scale = number(value),
+            "rotate" => self.rotate = number(value),
             "transition" => self.transition = transition(value),
             "background" => match value {
                 Value::Object(_) => match gradient(value) {
@@ -178,7 +180,16 @@ impl Style {
         let pixels = |value: &str| value.trim_end_matches("px").trim().parse::<f32>().ok();
         match name {
             "opacity" => self.opacity = value.parse().ok(),
-            "transform" => self.translate = Some(parse_translate(value)),
+            "transform" => {
+                let transform = parse_transform(value);
+                self.translate = Some(transform.translate);
+                if transform.scale.is_some() {
+                    self.scale = transform.scale;
+                }
+                if transform.rotate.is_some() {
+                    self.rotate = transform.rotate;
+                }
+            }
             "width" => self.width = length(value),
             "height" => self.height = length(value),
             "min-height" => self.min_height = length(value),
@@ -348,10 +359,18 @@ pub fn parse_colour(text: &str) -> Option<Rgba> {
     Some(Rgba { r: *parts.first()? / 255.0, g: *parts.get(1)? / 255.0, b: *parts.get(2)? / 255.0, a: alpha })
 }
 
-/// `translate(x, y)`, `translateX(x)` and `translateY(y)` from a CSS transform, in pixels.
-fn parse_translate(value: &str) -> (f32, f32) {
-    let mut x = 0.0;
-    let mut y = 0.0;
+/// What a CSS `transform` says that the host draws.
+#[derive(Debug, Default, PartialEq)]
+struct Transform {
+    translate: (f32, f32),
+    scale: Option<f32>,
+    rotate: Option<f32>,
+}
+
+/// `translate(x, y)`, `translateX(x)`, `translateY(y)`, `scale(s)` and `rotate(Ndeg)` from a CSS
+/// transform. Scales multiply, as the functions would compose, and a scale of two numbers takes the first.
+fn parse_transform(value: &str) -> Transform {
+    let mut transform = Transform::default();
     let mut rest = value;
     while let Some(open) = rest.find('(') {
         let name = rest[..open].trim();
@@ -360,20 +379,23 @@ fn parse_translate(value: &str) -> (f32, f32) {
         };
         let arguments: Vec<f32> = rest[open + 1..open + close]
             .split(',')
-            .map(|part| part.trim().trim_end_matches("px").parse().unwrap_or(0.0))
+            .map(|part| part.trim().trim_end_matches("px").trim_end_matches("deg").parse().unwrap_or(0.0))
             .collect();
+        let first = arguments.first().copied().unwrap_or(0.0);
         match name {
             "translate" => {
-                x += arguments.first().copied().unwrap_or(0.0);
-                y += arguments.get(1).copied().unwrap_or(0.0);
+                transform.translate.0 += first;
+                transform.translate.1 += arguments.get(1).copied().unwrap_or(0.0);
             }
-            "translateX" => x += arguments.first().copied().unwrap_or(0.0),
-            "translateY" => y += arguments.first().copied().unwrap_or(0.0),
+            "translateX" => transform.translate.0 += first,
+            "translateY" => transform.translate.1 += first,
+            "scale" => transform.scale = Some(transform.scale.unwrap_or(1.0) * first),
+            "rotate" => transform.rotate = Some(transform.rotate.unwrap_or(0.0) + first),
             _ => {}
         }
         rest = &rest[open + close + 1..];
     }
-    (x, y)
+    transform
 }
 
 #[cfg(test)]
@@ -387,6 +409,19 @@ mod tests {
             assert!(style.set(name, value), "{name} is understood");
         }
         style
+    }
+
+    #[test]
+    fn a_css_transform_gives_translation_scale_and_rotation() {
+        let transform = parse_transform("translate(4px, -2px) scale(0.5) rotate(90deg)");
+        assert_eq!(transform, Transform { translate: (4.0, -2.0), scale: Some(0.5), rotate: Some(90.0) });
+        assert_eq!(parse_transform("translateX(3px)").scale, None);
+    }
+
+    #[test]
+    fn scale_and_rotate_are_style_properties() {
+        let style = style_of(json!({ "scale": 1.25, "rotate": 45 }));
+        assert_eq!((style.scale, style.rotate), (Some(1.25), Some(45.0)));
     }
 
     #[test]

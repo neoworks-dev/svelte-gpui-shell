@@ -12,6 +12,7 @@ use serde_json::Value;
 
 mod apply;
 mod parse;
+mod zoom;
 
 pub use apply::apply;
 pub use parse::parse_colour;
@@ -133,6 +134,10 @@ pub struct Style {
     pub clip: Option<bool>,
     /// An offset from where layout put the element, in pixels.
     pub translate: Option<(f32, f32)>,
+    /// Draws the element and what is inside it larger or smaller, about its centre (see `zoom.rs`).
+    pub scale: Option<f32>,
+    /// Degrees clockwise. Only an icon drawn from SVG markup or a file turns.
+    pub rotate: Option<f32>,
     pub transition: Option<Transition>,
     pub background: Option<Rgba>,
     /// Replaces `background` when set: a style has one or the other.
@@ -234,6 +239,8 @@ impl Style {
             absolute,
             clip,
             translate,
+            scale,
+            rotate,
             transition,
             background,
             gradient,

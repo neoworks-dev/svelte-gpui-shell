@@ -97,6 +97,15 @@ export interface Style {
   overflow?: "visible" | "hidden";
   /** Moves the element from where layout put it, in pixels: `[x, y]`. */
   translate?: [number, number];
+  /**
+   * Draws the element and everything inside it larger or smaller, about its centre: every length
+   * in pixels inside is multiplied. A box with `width` and `height` in pixels keeps the room it
+   * had in its parent; any other grows or shrinks with its contents. In `hover`, it needs a
+   * `transition`, and then eases.
+   */
+  scale?: number;
+  /** Degrees clockwise about the centre. Only an `Icon` drawn from `svg` or `src` turns. */
+  rotate?: number;
 
   // Paint.
   background?: Background;

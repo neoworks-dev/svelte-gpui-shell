@@ -195,7 +195,7 @@ on an attribute with `@name=value`:
 - `Canvas` draws strokes, lines, rectangles and circles; no paths with curves, text or
   images yet, and no reading pixels back.
 - Svelte transitions are drawn for opacity, translation, and the heights, padding and
-  margins vertical `slide` animates. `scale` and `blur` do not draw their own
+  margins vertical `slide` animates, and `scale`. `blur` does not draw its own
   properties. `animate:flip` has no element positions to work from.
 - `fetch` buffers whole bodies: no streams, `Blob` or `FormData`, and no cookies.
 - Overlays do not animate in or out, a drag does not scroll what is near the edge, and menus have no submenus.

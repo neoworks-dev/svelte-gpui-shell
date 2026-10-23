@@ -1,7 +1,7 @@
 //! Canvases, images and icons.
 
 use gpui::prelude::*;
-use gpui::{Div, ObjectFit, SharedString, StyledImage, canvas, img, px, svg};
+use gpui::{Div, ObjectFit, SharedString, StyledImage, Transformation, canvas, img, px, radians, svg};
 
 use super::{Inherited, Painter, attribute, is_far_away};
 use crate::assets::register_svg;
@@ -47,7 +47,7 @@ impl Painter<'_> {
 
     /// An image draws its file once the source has resolved to one, and only while it is
     /// near the window, decoded no larger than it is shown.
-    pub(super) fn image_content(&self, mut element: Div, id: NodeId, node: &Node, style: &Style) -> Div {
+    pub(super) fn image_content(&self, mut element: Div, id: NodeId, node: &Node, style: &Style, zoom: f32) -> Div {
         let source = attribute(node, "src");
         if source.is_empty() {
             return element;
@@ -61,7 +61,7 @@ impl Painter<'_> {
         // Until it is drawn the box takes the image's own proportions, so the page does not jump.
         if let (Some((natural_width, natural_height)), None) = (images.dimensions(&path), style.width) {
             if style.height.is_none() {
-                element = element.w(px(natural_width as f32)).max_w_full();
+                element = element.w(px(natural_width as f32 * zoom)).max_w_full();
             }
             if style.aspect_ratio.is_none() {
                 element.style().aspect_ratio = Some(natural_width as f32 / natural_height.max(1) as f32);
@@ -108,5 +108,9 @@ pub(super) fn icon_content(mut element: Div, node: &Node, style: &Style, inherit
     if style.height.is_none() {
         element = element.h(px(side));
     }
-    element.child(svg().path(SharedString::from(path)).size_full().text_color(inherited.colour))
+    let mut drawing = svg().path(SharedString::from(path)).size_full().text_color(inherited.colour);
+    if let Some(degrees) = style.rotate {
+        drawing = drawing.with_transformation(Transformation::rotate(radians(degrees.to_radians())));
+    }
+    element.child(drawing)
 }

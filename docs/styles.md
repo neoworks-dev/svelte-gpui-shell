@@ -62,6 +62,8 @@ do: children stretch across by default, and `flex: 1` grows from nothing.
 | `top`, `right`, `bottom`, `left` | `Size` | |
 | `overflow` | `"visible"` \| `"hidden"` | `"hidden"` clips children, including to rounded corners. |
 | `translate` | `[x, y]` | Moves the element after layout, in pixels. Use it for drags and offsets. |
+| `scale` | `number` | Draws the element and what is inside it larger or smaller, about its centre. See [Scale and rotate](#scale-and-rotate). |
+| `rotate` | `number` | Degrees clockwise about the centre. Only an `Icon` drawn from `svg` or `src` turns. |
 
 Later siblings draw over earlier ones; there is no `zIndex`. To put something on top,
 place it last, usually with `position: "absolute"`.
@@ -107,6 +109,34 @@ the second to 1, and the colours stay flat outside them. Radii clip a gradient l
 What is not there: a gradient has exactly two stops, and there are no radial or conic gradients; GPUI's
 renderer draws only that. A gradient does not ease under `transition`, and `hover`, `active` and `focus`
 can swap one for a colour or another gradient, but not blend.
+
+### Scale and rotate
+
+`scale: 1.25` draws an element at 125% about its centre, and everything inside it with it: its
+size, padding, gaps, borders, radii, shadows, text and icons. GPUI cannot transform what it
+draws, so the host works the scale into the style instead of into the pixels. That has two
+consequences:
+
+- An element whose `width` and `height` are in pixels keeps the room it had, so its neighbours
+  do not move and it grows over them from its centre. An element that is sized by its contents
+  or by a share of its parent takes more or less room as it scales, like CSS `zoom`.
+- Lengths in a *child's* style are multiplied too, so `scale` on a parent works through any depth.
+  Shares (`"50%"`) and `flex` are left alone, because they follow the scaled parent already.
+
+`scale` is also what the `scale` transition of Svelte writes, so `<Presence in={[scale, …]}>` draws it
+(see [Motion](motion.md)). In `hover` it needs `transition` on the element: the host applies hover
+itself then, and eases the scale along with colours. `active` and `focus` do not scale.
+
+```svelte
+<View
+  style={{ size: 56, radius: 12, background: "#3f3f46", align: "center", justify: "center", transition: 150 }}
+  hover={{ scale: 1.15, background: "#8b5cf6" }}
+  onhover={() => {}}
+/>
+```
+
+`rotate: 90` turns an `Icon` clockwise about its centre. Rotating a `View`, `Text` or `Image`
+needs a transform in GPUI that it does not have, so those draw upright.
 
 ## Text
 
@@ -169,7 +199,7 @@ It takes one of these:
 | `number` | The duration in ms, with `ease`. |
 | `{ duration?, delay?, easing? }` | `easing` is `"linear"`, `"ease"`, `"ease-in"`, `"ease-out"` or `"ease-in-out"`. The duration defaults to 150. |
 
-Sizes, positions and `translate` are not eased by `transition`. Animate them with a
+Sizes, positions and `translate` are not eased by `transition`; `scale` is. Animate them with a
 `Tween` or `Spring` instead; see [Motion](motion.md).
 
 ## Themes

@@ -62,7 +62,7 @@ These are the only keys; anything else is ignored. See `docs/styles.md` for valu
   columnGap padding paddingX paddingY padding{Top,Right,Bottom,Left} margin marginX
   marginY margin{Top,Right,Bottom,Left} display`
 - **Size and position:** `width height size minWidth minHeight maxWidth maxHeight
-  aspectRatio position inset top right bottom left overflow translate`
+  aspectRatio position inset top right bottom left overflow translate scale rotate`
 - **Paint:** `background opacity borderWidth border{Top,Right,Bottom,Left}Width
   borderColor radius shadow cursor transition`
 - **Text:** `color fontSize fontWeight fontFamily lineHeight italic underline
@@ -79,7 +79,10 @@ The values that trip people up:
 - `lineHeight` is in pixels.
 - `background` is a colour or a two-stop gradient `{ linear: { angle, stops: [colour | [colour, 0..1], …] } }`
   (angle in CSS degrees, default 180); no radial, no more than two stops, never eased.
-- `transition` eases only `background`, `color`, `borderColor` and `opacity`. Animate
+- `scale: 1.2` draws an element and its contents larger about its centre (lengths inside are multiplied;
+  a box with pixel `width` and `height` keeps its room). In `hover` it needs `transition` on the element.
+  `rotate: 90` (degrees) turns an `Icon` only; other primitives draw upright. Svelte's `scale` transition draws.
+- `transition` eases only `background`, `color`, `borderColor`, `opacity` and `scale`. Animate
   size and position with `Tween` or `Spring` driving `translate`, `width` and so on.
 - There is no `zIndex`: later siblings draw on top.
 - A flexible child that should truncate needs `minWidth: 0`.

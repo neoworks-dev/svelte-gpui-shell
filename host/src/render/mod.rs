@@ -391,7 +391,8 @@ impl<'a> Painter<'a> {
         }
         let is_view_top = self.inside_view == Some(id);
         if !is_view_top {
-            if let Some(view) = self.view_element(id, &computed.style, inherited, cx) {
+            let zoomed = computed.style.zoomed(inherited.zoom, inherited.font_size);
+            if let Some(view) = self.view_element(id, zoomed.as_ref().unwrap_or(&computed.style), inherited, cx) {
                 return Some(view);
             }
         }
@@ -399,7 +400,8 @@ impl<'a> Painter<'a> {
         if eased {
             self.ease_style(id, &mut computed);
         }
-        let style = &computed.style;
+        let zoomed = computed.style.zoomed(inherited.zoom, inherited.font_size);
+        let style = zoomed.as_ref().unwrap_or(&computed.style);
         let inherited = inherited.under(style);
 
         let mut element = style::apply(div().flex(), style);
@@ -409,7 +411,7 @@ impl<'a> Painter<'a> {
         }
         element = match primitive {
             Primitive::Text => self.text_content(element, id, node, style, &inherited),
-            Primitive::Image => self.image_content(element, id, node, style),
+            Primitive::Image => self.image_content(element, id, node, style, inherited.zoom),
             Primitive::Icon => icon_content(element, node, style, &inherited),
             Primitive::Input => self.field_content(element, id, node, style, &inherited, cx),
             Primitive::Canvas => self.canvas_content(element, id, style),
