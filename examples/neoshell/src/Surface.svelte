@@ -16,7 +16,9 @@
 
   // The window a top-level view draws in: a layer surface placed by the view
   // tree node's args. Width and height default to the node's, and a view whose
-  // window changes size while it runs passes its own. With `plain`, the
+  // window changes size while it runs passes its own. `extraHeight` adds
+  // click-through room below the content that the exclusive zone leaves out
+  // (pass the zone with it when the node has none). With `plain`, the
   // surface is a view in the window around it, so the smoke harness can lay
   // every view out side by side.
 
@@ -25,6 +27,7 @@
     width,
     height,
     exclusiveZone,
+    extraHeight = 0,
     keyboard,
     style,
     children,
@@ -33,6 +36,7 @@
     width?: number
     height?: number
     exclusiveZone?: number
+    extraHeight?: number
     keyboard?: 'none' | 'on-demand' | 'exclusive'
     style?: Style
     children?: Snippet
@@ -41,7 +45,7 @@
   const surface = surfaceOf()
   const record = $derived(recordOf(args))
   const surfaceWidth = $derived(valueOr(width, sizeOf(record, 'width')))
-  const surfaceHeight = $derived(valueOr(height, sizeOf(record, 'height')))
+  const surfaceHeight = $derived(heightWithRoom(valueOr(height, sizeOf(record, 'height'))))
   const surfaceZone = $derived(valueOr(exclusiveZone, exclusiveZoneOf(record)))
   const surfaceKeyboard = $derived(valueOr(keyboard, keyboardOf(record)))
   const plainStyle = $derived({
@@ -49,6 +53,15 @@
     width: plainSize(surfaceWidth),
     height: plainSize(surfaceHeight),
   })
+
+  // Transparent room past the content, for popups that hang out of it; a
+  // stretched surface (height 0) already has all there is.
+  function heightWithRoom(contentHeight: number): number {
+    if (contentHeight === 0) {
+      return 0
+    }
+    return contentHeight + extraHeight
+  }
 
   // Size 0 stretches a layer surface; in a plain view it fills its parent.
   function plainSize(size: number): Size {

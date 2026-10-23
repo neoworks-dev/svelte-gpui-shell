@@ -4,7 +4,7 @@
   import { Button, Text, View } from '@neoworks/svelte-gpui/ui'
   import type { Style } from '@neoworks/svelte-gpui/ui'
   import Surface from '../../Surface.svelte'
-  import { recordOf } from '../../lib/record'
+  import { numberOf, recordOf } from '../../lib/record'
   import { alpha, colors, windowBackground } from '../../theme'
   import {
     activeIdOf,
@@ -21,7 +21,11 @@
 
   let { bus, args, children }: ViewProps = $props()
 
+  const TOOLTIP_AREA = 40
+  const DEFAULT_BAR_HEIGHT = 30
+
   const centerGap = $derived(centerGapOf(args))
+  const barHeight = $derived(numberOf(recordOf(args).height, DEFAULT_BAR_HEIGHT))
 
   let workspaceList = $state<WorkspaceEntry[]>([])
   let activeWorkspaceId = $state(-1)
@@ -128,6 +132,7 @@
 
 <Surface
   {args}
+  extraHeight={TOOLTIP_AREA}
   style={{
     background: windowBackground,
     width: '100%',
@@ -135,8 +140,9 @@
   }}
 >
   <View
+    input
     style={{
-      flex: 1,
+      height: barHeight,
       direction: 'row',
       align: 'center',
       paddingX: 12,
