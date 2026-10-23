@@ -1,0 +1,15 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "neoshell-gpui",
+      "dependencies": {
+        "@neoworks/extension-system": "link:@neoworks/extension-system",
+      },
+    },
+  },
+  "packages": {
+    "@neoworks/extension-system": ["@neoworks/extension-system@link:@neoworks/extension-system", {}],
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "neoshell-gpui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@neoworks/extension-system": "link:@neoworks/extension-system"
+  }
+}
