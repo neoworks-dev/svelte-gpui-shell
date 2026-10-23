@@ -6,7 +6,14 @@ import { sampleKeyframes } from "../examples/neoshell/src/lib/keyframes";
 import { adler32, crc32, encodePng } from "../examples/neoshell/src/lib/png";
 import { dockEntries, entryForWindow, magnificationOf, openWindowsOf } from "../examples/neoshell/src/extensions/neoshell/dockModel";
 import type { DockApp, OpenWindow } from "../examples/neoshell/src/extensions/neoshell/dockModel";
-import { environmentOf } from "../examples/neoshell/src/system/environment";
+import { environmentOf, lockMonitorsOf } from "../examples/neoshell/src/system/environment";
+import type { ShellEnvironment } from "../examples/neoshell/src/system/environment";
+import { quotedValueOf, sessionSignalOf } from "../examples/neoshell/src/extensions/lock/logind";
+import { LockState } from "../examples/neoshell/src/extensions/lock/lockState";
+import type { BusService } from "../examples/neoshell/src/lib/bus";
+import { initialsOf, realNameOf } from "../examples/neoshell/src/system/userNames";
+import { DEFAULT_LIVE_OPTIONS, fullscreenShowing, isVideoPath, liveOptionsOf, onBatteryPower, shouldPlay } from "../examples/neoshell/src/extensions/neoshell/liveWallpaper";
+import { snapPoint } from "../examples/neoshell/src/extensions/neoshell/freeform";
 import { userDirectoryOf } from "../examples/neoshell/src/system/userDirs";
 import { anchorOf, exclusiveZoneOf, keyboardOf, sizeOf } from "../examples/neoshell/src/tree";
 
@@ -173,5 +180,102 @@ describe("view tree arguments", () => {
     expect(exclusiveZoneOf({ exclusiveSize: 30 })).toBe(30);
     expect(sizeOf({ height: 30 }, "height")).toBe(30);
     expect(sizeOf({ height: -1 }, "height")).toBe(0);
+  });
+});
+
+describe("logind", () => {
+  test("a busctl reply is read from its quoted value", () => {
+    expect(quotedValueOf('o "/org/freedesktop/login1/session/_33"')).toBe("/org/freedesktop/login1/session/_33");
+    expect(quotedValueOf('v s "3"')).toBe("3");
+    expect(quotedValueOf("b true")).toBeNull();
+  });
+
+  test("a gdbus monitor line is a lock or an unlock only for the session signals", () => {
+    const path = "/org/freedesktop/login1/session/_33";
+    expect(sessionSignalOf(`${path}: org.freedesktop.login1.Session.Lock ()`)).toBe("lock");
+    expect(sessionSignalOf(`${path}: org.freedesktop.login1.Session.Unlock ()`)).toBe("unlock");
+    expect(sessionSignalOf(`${path}: org.freedesktop.DBus.Properties.PropertiesChanged ('x', {}, [])`)).toBeNull();
+    expect(sessionSignalOf("Monitoring signals on object /org/freedesktop/login1/session/_33")).toBeNull();
+  });
+});
+
+describe("lock state", () => {
+  function fakeBus() {
+    const retained: unknown[] = [];
+    const bus = {
+      retain(_type: string, data: unknown) {
+        retained.push(data);
+        return () => {};
+      },
+    } as unknown as BusService;
+    return { bus, retained };
+  }
+
+  test("publishes each change once and writes the session hint with it", () => {
+    const { bus, retained } = fakeBus();
+    const hints: boolean[] = [];
+    const state = new LockState(bus, (locked) => hints.push(locked));
+    state.start();
+    state.set(true);
+    state.set(true);
+    state.set(false);
+    expect(retained).toEqual([{ locked: false }, { locked: true }, { locked: false }]);
+    expect(hints).toEqual([true, false]);
+    expect(state.isLocked()).toBe(false);
+  });
+
+  test("lock windows open only on the monitors the shell is limited to", () => {
+    const limited = { monitors: ["a"] } as ShellEnvironment;
+    const open = { monitors: null } as ShellEnvironment;
+    expect(lockMonitorsOf(null, ["a", "b"])).toEqual([]);
+    expect(lockMonitorsOf(limited, ["a", "b"])).toEqual(["a"]);
+    expect(lockMonitorsOf(open, ["a", "b"])).toEqual(["a", "b"]);
+  });
+});
+
+describe("user identity", () => {
+  test("the display name is the first GECOS field, else the login name", () => {
+    expect(realNameOf("moritz:x:1000:1000:Moritz Utcke,,,:/home/moritz:/bin/fish", "moritz")).toBe("Moritz Utcke");
+    expect(realNameOf("moritz:x:1000:1000::/home/moritz:/bin/fish", "moritz")).toBe("moritz");
+    expect(realNameOf("", "moritz")).toBe("moritz");
+    expect(initialsOf("Moritz Utcke")).toBe("MU");
+    expect(initialsOf("Cher")).toBe("C");
+  });
+});
+
+describe("live wallpaper rules", () => {
+  test("a fullscreen window pauses it only while its workspace is showing", () => {
+    const workspaces = [{ id: 3, hasfullscreen: true }, { id: 4, hasfullscreen: false }];
+    const showing3 = [{ activeWorkspace: { id: 3 } }];
+    const showing4 = [{ activeWorkspace: { id: 4 } }];
+    expect(fullscreenShowing(workspaces, showing3)).toBe(true);
+    expect(fullscreenShowing(workspaces, showing4)).toBe(false);
+  });
+
+  test("pause options decide whether fullscreen and battery power hold the video", () => {
+    expect(shouldPlay(DEFAULT_LIVE_OPTIONS, true, false)).toBe(false);
+    expect(shouldPlay(DEFAULT_LIVE_OPTIONS, false, true)).toBe(true);
+    expect(shouldPlay({ ...DEFAULT_LIVE_OPTIONS, pauseOnBattery: true }, false, true)).toBe(false);
+    expect(shouldPlay({ ...DEFAULT_LIVE_OPTIONS, pauseOnFullscreen: false }, true, false)).toBe(true);
+    expect(onBatteryPower({ status: "Discharging" })).toBe(true);
+    expect(onBatteryPower({ status: "Charging" })).toBe(false);
+  });
+
+  test("options come from appearance.liveWallpaper with the speed clamped", () => {
+    const options = liveOptionsOf({ appearance: { liveWallpaper: { speed: 100, pauseOnBattery: true } } });
+    expect(options.speed).toBe(8);
+    expect(options.pauseOnBattery).toBe(true);
+    expect(options.pauseOnFullscreen).toBe(true);
+    expect(isVideoPath("/x/y.mp4")).toBe(true);
+    expect(isVideoPath("/x/y.png")).toBe(false);
+    expect(isVideoPath("")).toBe(false);
+  });
+});
+
+describe("desktop snapping", () => {
+  test("a drop near a screen edge is pulled onto it", () => {
+    const viewport = { width: 1920, height: 1080 };
+    const landed = snapPoint({ x: 12, y: 300 }, { width: 96, height: 96 }, [], viewport);
+    expect(landed.x).toBe(8);
   });
 });

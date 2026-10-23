@@ -11,6 +11,7 @@
   import Clock from './extensions/neoshell/Clock.svelte'
   import Desktop from './extensions/neoshell/Desktop.svelte'
   import Dock from './extensions/neoshell/Dock.svelte'
+  import LockSurface from './extensions/lock/LockSurface.svelte'
   import Notch from './extensions/neoshell/Notch.svelte'
   import Topbar from './extensions/neoshell/Topbar.svelte'
   import Wallpaper from './extensions/neoshell/Wallpaper.svelte'
@@ -114,6 +115,9 @@
       <WidgetGallery {bus} {registry} args={{}} id="smoke.gallery" />
     </View>
 
+    <View style={{ width: SHELL_WIDTH, height: SHELL_HEIGHT, shrink: 0 }}>
+      <LockSurface {bus} onunlock={() => {}} />
+    </View>
     <View style={{ width: PANEL_WIDTH + 40, height: 720, shrink: 0 }}>
       <Panel {bus} {registry} args={{ offsetTop: 0, offsetEnd: 0 }} id="smoke.panel" />
     </View>

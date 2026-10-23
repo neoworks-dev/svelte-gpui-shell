@@ -1,4 +1,4 @@
-import { isVideo } from '../files/backend.js'
+import { isVideo } from '../../system/mediaTypes.js'
 import { recordOf } from '../../lib/record.js'
 
 // What the wallpaper view decides about a live wallpaper, kept free of the

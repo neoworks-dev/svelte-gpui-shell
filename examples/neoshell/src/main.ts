@@ -39,6 +39,8 @@ const PROGRAMS = [
   'loginctl',
   'hyprctl',
   'busctl',
+  'gdbus',
+  'getent',
   'gio',
   'setsid',
   'sh',

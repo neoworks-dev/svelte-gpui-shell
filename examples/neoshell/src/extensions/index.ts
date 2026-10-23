@@ -6,10 +6,12 @@ import mediaBackend from './media/backend.js'
 import filesBackend from './files/backend.js'
 import networkBackend from './network/backend.js'
 import bluetoothBackend from './bluetooth/backend.js'
+import lockBackend from './lock/backend.js'
 import weatherBackend from './weather/backend.js'
 import airQualityBackend from './airquality/backend.js'
 import neoshellViews from './neoshell/views.js'
 import quicksettingsViews from './quicksettings/views.js'
+import lockViews from './lock/views.js'
 import weatherViews from './weather/views.js'
 import airQualityViews from './airquality/views.js'
 
@@ -70,6 +72,11 @@ export const EXTENSIONS: Record<string, ExtensionModule> = {
   bluetooth: {
     manifest: { id: 'bluetooth', inject: ['bus'] },
     backend: bluetoothBackend as Plugin.Object,
+  },
+  lock: {
+    manifest: { id: 'lock', inject: ['bus', 'ui'] },
+    backend: lockBackend as Plugin.Object,
+    views: lockViews,
   },
   neoshell: {
     manifest: { id: 'neoshell', inject: ['bus', 'ui'] },

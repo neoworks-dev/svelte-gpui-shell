@@ -59,6 +59,20 @@ function listOfOrNull(value: string | undefined): string[] | null {
     .filter((name) => name !== '')
 }
 
+// The monitors a lock window may open on: the ones the shell itself is limited
+// to, or every connected one when it is not. Nothing opens before the
+// environment is known.
+export function lockMonitorsOf(environment: ShellEnvironment | null, connected: string[]): string[] {
+  if (environment === null) {
+    return []
+  }
+  if (environment.monitors === null) {
+    return connected
+  }
+  const allowed = environment.monitors
+  return connected.filter((name) => allowed.includes(name))
+}
+
 export function isShellEnvironment(value: unknown): value is ShellEnvironment {
   return typeof value === 'object' && value !== null && 'configPath' in value && 'readOnly' in value
 }

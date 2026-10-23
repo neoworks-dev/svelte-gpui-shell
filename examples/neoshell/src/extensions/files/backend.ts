@@ -15,6 +15,7 @@ import {
   renameTo,
   watchDirectory,
 } from '../../system/fs.js'
+import { extensionOf, IMAGE_EXTENSIONS, isImage, isVideo } from '../../system/mediaTypes.js'
 import { launchDetached, output } from '../../system/proc.js'
 import { applicationDirectories, desktopDirectory } from '../../system/xdg.js'
 
@@ -161,8 +162,6 @@ export function compareEntries(left: DesktopEntry, right: DesktopEntry): number 
   return left.name.toLowerCase().localeCompare(right.name.toLowerCase())
 }
 
-const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.avif', '.bmp'])
-
 const ICON_BY_EXTENSION: Record<string, string> = {
   '.pdf': 'application-pdf',
   '.zip': 'application-x-archive',
@@ -194,18 +193,6 @@ export function iconNameOf(name: string, directory: boolean): string {
     return 'text-x-generic'
   }
   return icon
-}
-
-export function isImage(name: string): boolean {
-  return IMAGE_EXTENSIONS.has(extensionOf(name))
-}
-
-// The containers GStreamer's playbin opens in practice; the wallpaper picker
-// lists these next to the images.
-const VIDEO_EXTENSIONS = new Set(['.mp4', '.m4v', '.webm', '.mkv', '.mov', '.avi'])
-
-export function isVideo(name: string): boolean {
-  return VIDEO_EXTENSIONS.has(extensionOf(name))
 }
 
 // openEntry hands the path to the desktop's own handler. The opened
@@ -387,14 +374,6 @@ export function isSafeName(name: string): boolean {
     return false
   }
   return !name.includes('/')
-}
-
-function extensionOf(name: string): string {
-  const dot = name.lastIndexOf('.')
-  if (dot <= 0) {
-    return ''
-  }
-  return name.slice(dot).toLowerCase()
 }
 
 function stringOr(value: unknown, fallback: string): string {
