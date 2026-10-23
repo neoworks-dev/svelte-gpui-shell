@@ -7,9 +7,11 @@
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+
+use gpui::{DevicePixels, RenderImage, SvgRenderer, SvgSize, size};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ImageState {
@@ -18,11 +20,20 @@ pub enum ImageState {
     Failed,
 }
 
+/// A full-colour SVG icon drawn at one pixel size.
+enum Raster {
+    Loading,
+    Ready(Arc<RenderImage>),
+    Failed,
+}
+
 #[derive(Clone)]
 pub struct Images {
     states: Arc<Mutex<HashMap<String, ImageState>>>,
     /// Pixel sizes read from file headers, which cost a read each.
     sizes: Arc<Mutex<HashMap<PathBuf, Option<(u32, u32)>>>>,
+    /// SVG icons rasterised to the pixel size they are drawn at, kept in memory.
+    rasters: Arc<Mutex<HashMap<(PathBuf, u32), Raster>>>,
     /// Set when a background job finishes, so the window draws again.
     pub updated: Arc<AtomicBool>,
     base: PathBuf,
@@ -41,6 +52,7 @@ impl Images {
         Self {
             states: Arc::new(Mutex::new(HashMap::new())),
             sizes: Arc::new(Mutex::new(HashMap::new())),
+            rasters: Arc::new(Mutex::new(HashMap::new())),
             updated: Arc::new(AtomicBool::new(false)),
             base,
             cache,
@@ -52,6 +64,33 @@ impl Images {
     pub fn reset(&self) {
         self.states.lock().expect("image states").clear();
         self.sizes.lock().expect("image sizes").clear();
+        self.rasters.lock().expect("icon rasters").clear();
+        crate::icon_theme::forget();
+    }
+
+    /// A full-colour SVG file drawn `pixels` wide, once a thread has rasterised it; until then
+    /// nothing, and the window draws again when it is ready. A file that cannot be drawn stays nothing.
+    pub fn raster(&self, renderer: &SvgRenderer, path: &Path, pixels: u32) -> Option<Arc<RenderImage>> {
+        let key = (path.to_path_buf(), pixels);
+        match self.rasters.lock().expect("icon rasters").get(&key) {
+            Some(Raster::Ready(image)) => return Some(image.clone()),
+            Some(Raster::Loading | Raster::Failed) => return None,
+            None => {}
+        }
+        self.rasters.lock().expect("icon rasters").insert(key.clone(), Raster::Loading);
+        let rasters = self.rasters.clone();
+        let updated = self.updated.clone();
+        let renderer = renderer.clone();
+        std::thread::spawn(move || {
+            let drawn = rasterise(&renderer, &key.0, key.1);
+            let state = match drawn {
+                Some(image) => Raster::Ready(image),
+                None => Raster::Failed,
+            };
+            rasters.lock().expect("icon rasters").insert(key, state);
+            updated.store(true, Ordering::Relaxed);
+        });
+        None
     }
 
     /// The state of a source, starting to load it if this is the first time it is asked for.
@@ -168,6 +207,13 @@ impl Images {
         });
         ImageState::Loading
     }
+}
+
+fn rasterise(renderer: &SvgRenderer, path: &Path, pixels: u32) -> Option<Arc<RenderImage>> {
+    let bytes = std::fs::read(path).ok()?;
+    let document = renderer.parse_svg(&bytes).ok()?;
+    let width = DevicePixels(pixels as i32);
+    renderer.render_parsed(&document, SvgSize::Size(size(width, width))).ok()
 }
 
 /// Writes a copy of `source` that is `width` pixels wide.

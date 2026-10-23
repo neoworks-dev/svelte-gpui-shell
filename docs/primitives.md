@@ -279,12 +279,15 @@ proportions where they are known.
 
 ## Icon
 
-An SVG, tinted with one colour.
+An SVG tinted with one colour, or an icon from the desktop's icon theme.
 
 | Prop | Type | |
 |---|---|---|
 | `svg` | `string` | SVG markup. |
 | `src` | `string` | Or an SVG file's path. |
+| `name` | `string` | Or the name of a theme icon, such as `firefox`, `org.gnome.Nautilus` or `audio-volume-high-symbolic`. An absolute path is that file. See [Theme icons](#theme-icons). |
+| `fallback` | `string` | A second `name` to look up when the first is not in the theme. |
+| `theme` | `string` | An icon theme to look in instead of the desktop's current one, such as `Adwaita`. |
 | `size` | `number` | Width and height in pixels. The default is the font size around it. |
 | `color` | `Color` | The default is the text colour around it, so a button's `color` and `hover={{ color }}` tint its icon. |
 | `style` | `Style` | |
@@ -299,6 +302,33 @@ they are:
 
 <Icon svg={gear} size={18} />
 ```
+
+### Theme icons
+
+`<Icon name="firefox" size={32} />` draws the icon the desktop's icon theme has for that name, at
+that size on this display: the file in the theme's directory made for it, or the nearest one. The
+theme is read once from `gsettings get org.gnome.desktop.interface icon-theme`, else from
+`gtk-icon-theme-name` in GTK's `settings.ini`, else it is `hicolor`. The lookup follows the
+specification (the theme, the themes it `Inherits`, `hicolor`, then `/usr/share/pixmaps`) in
+`~/.icons`, `$XDG_DATA_HOME/icons` and `$XDG_DATA_DIRS/icons`, and remembers every answer.
+Restarting the app, or reloading it under `--watch`, reads the theme again.
+
+```svelte
+<Icon name="audio-volume-high-symbolic" size={16} color="#a1a1aa" />
+<Icon name={entry.icon} fallback="application-x-executable" size={48} />
+```
+
+- A **symbolic** icon, one whose name ends in `-symbolic`, is a mask and is tinted like any other
+  icon: with `color`, or the text colour around it.
+- Every other theme icon keeps its own colours. A PNG is drawn as it is, scaled down when the file
+  is much larger than the icon; an SVG is rasterised on a thread at the size it is drawn, and
+  appears a moment after the rest of the window.
+- `Icon=` in a `.desktop` file is a name or an absolute path, and `name` takes either. A name that
+  ends in `.png`, `.svg` or `.xpm` is looked up without the extension.
+- A name that is not found draws nothing, so give `fallback` where an icon must show. A missing
+  name is not shortened to a more general one (`foo-bar` does not become `foo`).
+- `rotate` turns a symbolic icon like any tinted one, and not a coloured one.
+- XPM files, and PNGs named `.symbolic.png`, are not read.
 
 ## Canvas
 

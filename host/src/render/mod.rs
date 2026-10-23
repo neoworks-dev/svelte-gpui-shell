@@ -39,7 +39,6 @@ use events::listens_for_pointer;
 pub use events::{listens_for_drag, pointer_detail, takes_button};
 pub use field::{caret_visible, next_blink};
 use file_drop::external_drag_ended;
-use media::icon_content;
 use motion::Animation;
 use press::press_ends_focus;
 use primitive::compute;
@@ -412,7 +411,7 @@ impl<'a> Painter<'a> {
         element = match primitive {
             Primitive::Text => self.text_content(element, id, node, style, &inherited),
             Primitive::Image => self.image_content(element, id, node, style, inherited.zoom),
-            Primitive::Icon => icon_content(element, node, style, &inherited),
+            Primitive::Icon => self.icon_content(element, node, style, &inherited, cx),
             Primitive::Input => self.field_content(element, id, node, style, &inherited, cx),
             Primitive::Canvas => self.canvas_content(element, id, style),
             Primitive::Element => self.element_content(element, id, node),

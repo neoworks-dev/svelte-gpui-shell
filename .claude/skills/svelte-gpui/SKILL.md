@@ -46,7 +46,7 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Scroll` | `style horizontal onscroll onlayout` (needs a bounded height) | `scrollTo(offset)`, `scrollBy(delta)`, `position()` (`{ x, y, maxX, maxY }`, reactive; `onscroll` also fires when `maxY` changes) |
 | `List` | `items rowHeight? estimatedRowHeight row={snippet(item, index)} key overscan stickToEnd style` (virtualised; without `rowHeight` rows are measured and may differ) | `scrollToIndex(i, { align })` |
 | `Image` | `src` (path, `data:`, `http(s)`) `fit style onload onerror` | |
-| `Icon` | `svg` (markup) or `src`, `size color style`; tinted by the text colour | |
+| `Icon` | `svg` (markup), `src`, or `name` (a freedesktop icon name such as `firefox` or `audio-volume-high-symbolic`, or an absolute path; `fallback`, `theme`), `size color style`; svg icons and `-symbolic` theme icons are tinted by the text colour, other theme icons keep their colours | |
 | `Canvas` | `style ondown onmove onup onhover onwheel onlayout` | `begin(x,y,pen) lineTo end line fillRect fillCircle clear` |
 | `Presence` | `in out style`, each a transition or `[fn, params]` | |
 | `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
