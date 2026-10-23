@@ -7,7 +7,7 @@
   import type { ViewProps } from '../../host/plugins/views'
   import { recordOf } from '../../lib/record'
   import Surface from '../../Surface.svelte'
-  import { alpha, colors, windowBackground } from '../../theme'
+  import { alpha, colors } from '../../theme'
   import Fillet from './Fillet.svelte'
   import LevelMeter from './LevelMeter.svelte'
 
@@ -488,7 +488,7 @@
   {args}
   width={WINDOW_WIDTH}
   height={WINDOW_HEIGHT}
-  style={{ background: windowBackground, direction: 'row', justify: 'center', align: 'start' }}
+  style={{ direction: 'row', justify: 'center', align: 'start' }}
 >
   <Fillet side="left" />
 

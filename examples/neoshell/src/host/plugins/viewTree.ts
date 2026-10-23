@@ -114,7 +114,7 @@ const DEFAULT_TREE: TreeNode[] = [
     // anything is written the seed is never consulted again, so removing a
     // widget in the gallery makes it stay removed.
     args: {
-      layer: 'background',
+      layer: 'bottom',
       anchors: ['top', 'bottom', 'left', 'right'],
       // Widgets have their own settings, and a text field on a layer that
       // takes no keyboard focus cannot be typed into.

@@ -5,7 +5,7 @@
   import type { Style } from '@neoworks/svelte-gpui/ui'
   import Surface from '../../Surface.svelte'
   import { numberOf, recordOf } from '../../lib/record'
-  import { alpha, colors, windowBackground } from '../../theme'
+  import { alpha, colors } from '../../theme'
   import {
     activeIdOf,
     urgentAddressOf,
@@ -134,7 +134,6 @@
   {args}
   extraHeight={TOOLTIP_AREA}
   style={{
-    background: windowBackground,
     width: '100%',
     height: '100%',
   }}

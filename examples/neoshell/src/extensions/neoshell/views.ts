@@ -6,6 +6,7 @@ import Notch from './Notch.svelte'
 import Dock from './Dock.svelte'
 import Clock from './Clock.svelte'
 import Battery from './Battery.svelte'
+import Wallpaper from './Wallpaper.svelte'
 import Desktop from './Desktop.svelte'
 import WidgetGallery from './WidgetGallery.svelte'
 
@@ -23,6 +24,7 @@ const plugin: Plugin.Object = {
     context.effect(() => ui.register('neoshell.clock', Clock))
     context.effect(() => ui.register('neoshell.dock', Dock))
     context.effect(() => ui.register('neoshell.battery', Battery))
+    context.effect(() => ui.register('neoshell.wallpaper', Wallpaper))
     context.effect(() => ui.register('neoshell.desktop', Desktop))
     context.effect(() => ui.register('neoshell.widgetgallery', WidgetGallery))
   },

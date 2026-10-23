@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte'
   import { View } from '@neoworks/svelte-gpui/ui'
   import type { PointerEvent } from '@neoworks/svelte-gpui/ui'
   import { subscribeTo } from '../../lib/bus'
@@ -36,8 +37,7 @@
   let { bus, registry, args }: ViewProps = $props()
 
   // The bus is the shell's own and does not change for the life of the view.
-  // svelte-ignore state_referenced_locally
-  const store = new DesktopStore(bus)
+  const store = new DesktopStore(untrack(() => bus))
 
   let band = $state<Band | null>(null)
   let preview = $state<{ point: Point; box: Size; allowed: boolean } | null>(null)
