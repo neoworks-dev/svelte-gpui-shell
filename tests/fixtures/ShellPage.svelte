@@ -1,7 +1,7 @@
 <!-- An app with the shell primitives, for tests/shell.test.ts. -->
 <script lang="ts">
   import { sessionLock } from "@neoworks/svelte-gpui";
-  import { Popover, Text, View, Window } from "@neoworks/svelte-gpui/ui";
+  import { Popover, Text, Video, View, Window } from "@neoworks/svelte-gpui/ui";
 
   let marked = $state(true);
   let locking = $state(false);
@@ -18,6 +18,7 @@
   <Popover open input>
     <View />
   </Popover>
+  <Video src="/clips/loop.mp4" fit="cover" rate={2} maxFps={30} muted={false} loop={false} paused />
   <Text>lock is {sessionLock.state}</Text>
 </Window>
 

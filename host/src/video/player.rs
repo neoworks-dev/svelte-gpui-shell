@@ -58,6 +58,11 @@ impl Player {
     /// Starts playing. An error says what the pipeline lacks, such as a plugin.
     pub fn start(node: NodeId, settings: Settings, sink: Sink) -> Result<Player, String> {
         gst::init().map_err(|error| format!("GStreamer does not start: {error}"))?;
+        if let Some(path) = settings.source.strip_prefix("file://") {
+            if !std::path::Path::new(path).is_file() {
+                return Err(format!("the video file does not exist: {path}"));
+            }
+        }
         let shared = Arc::new(Shared { frame: Mutex::new(None), wake_pending: AtomicBool::new(false) });
         let make = |factory: &str| {
             gst::ElementFactory::make(factory)
@@ -306,6 +311,7 @@ fn watch_bus(
         sink.send(node as u64, Settle::Video, json!({ "name": name, "detail": detail }), None);
     };
     let mut announced = false;
+    let mut failed = false;
     while !stop.load(Ordering::Relaxed) {
         let Some(message) = bus.timed_pop(gst::ClockTime::from_mseconds(200)) else {
             continue;
@@ -334,7 +340,9 @@ fn watch_bus(
                     tell("end", json!({}));
                 }
             }
-            gst::MessageView::Error(error) => {
+            // One failure posts several errors; the first one names the cause.
+            gst::MessageView::Error(error) if !failed => {
+                failed = true;
                 tell("error", json!({ "message": error.error().to_string() }));
             }
             _ => {}

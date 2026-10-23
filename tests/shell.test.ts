@@ -66,3 +66,22 @@ describe("session lock", () => {
     expect(run.unlocked.some((op) => op[0] === REMOVE)).toBe(true);
   });
 });
+
+describe("video", () => {
+  const video = () => run.mounted.find((op) => op[0] === CREATE_ELEMENT && op[2] === "g-video")![1];
+
+  test("a Video becomes a g-video carrying its source and settings", () => {
+    const id = video();
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "src", "/clips/loop.mp4"]);
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "fit", "cover"]);
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "rate", "2"]);
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "max-fps", "30"]);
+  });
+
+  test("the defaults are sent as nothing, and only the opposite as an attribute", () => {
+    const id = video();
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "loop", "false"]);
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "muted", "false"]);
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, id, "paused", ""]);
+  });
+});
