@@ -20,11 +20,11 @@
   const HOUR_MS = 60 * MINUTE_MS
   const KNOB_PX = 14
   const TRACK_HEIGHT = 8
-  // The ramp from good to severe, as the pairs of colours it runs between.
-  const RAMP = [
-    [colors.success, colors.warning],
-    [colors.warning, colors.error],
-    [colors.error, colors.accent],
+  const RAMP_STOPS: [string, string, string, string] = [
+    colors.success,
+    colors.warning,
+    colors.error,
+    colors.accent,
   ]
 
   let {
@@ -65,15 +65,17 @@
   }
 </script>
 
-<!-- The ramp is three two-colour gradients end to end, since a background has
-     two stops; the knob sits over it at the reading. -->
+<!-- The knob sits over the ramp at the reading. -->
 {#snippet scaleBar()}
   <View style={{ height: KNOB_PX, justify: 'center' }}>
-    <View style={{ width: trackWidth, height: TRACK_HEIGHT, direction: 'row', radius: 4, overflow: 'hidden' }}>
-      {#each RAMP as [from, to] (from)}
-        <View style={{ flex: 1, background: { linear: { angle: 90, stops: [from, to] } } }}></View>
-      {/each}
-    </View>
+    <View
+      style={{
+        width: trackWidth,
+        height: TRACK_HEIGHT,
+        radius: 4,
+        background: { linear: { angle: 90, stops: RAMP_STOPS } },
+      }}
+    ></View>
     <View
       style={{
         position: 'absolute',
