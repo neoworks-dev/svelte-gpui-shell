@@ -18,6 +18,8 @@ pub struct Inherited {
     pub(super) underline: bool,
     pub(super) strikethrough: bool,
     pub(super) uppercase: bool,
+    /// The product of the `scale` of every element above, which lengths in pixels are drawn at.
+    pub(super) zoom: f32,
 }
 
 impl Inherited {
@@ -31,6 +33,7 @@ impl Inherited {
             underline: false,
             strikethrough: false,
             uppercase: false,
+            zoom: 1.0,
         }
     }
 
@@ -44,6 +47,7 @@ impl Inherited {
             underline: style.underline.unwrap_or(self.underline),
             strikethrough: style.strikethrough.unwrap_or(self.strikethrough),
             uppercase: style.uppercase.unwrap_or(self.uppercase),
+            zoom: self.zoom * style.scale.unwrap_or(1.0).max(0.01),
         }
     }
 }

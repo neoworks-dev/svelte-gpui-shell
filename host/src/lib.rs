@@ -13,6 +13,7 @@ mod elements;
 mod embedded;
 mod errors;
 mod field;
+mod icon_theme;
 mod images;
 mod io;
 mod launch;

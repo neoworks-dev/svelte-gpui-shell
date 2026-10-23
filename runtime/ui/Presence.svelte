@@ -2,8 +2,8 @@
   A view that plays Svelte transitions as it comes and goes. Svelte only takes
   `in:`, `out:` and `transition:` on elements, so this carries them for a
   component tree: `<Presence in={[fly, { x: -20 }]} out={fade}>`.
-  The transitions write `opacity` and `transform: translate(…)` each frame, which
-  the host draws; other properties they animate are not drawn.
+  The transitions write `opacity` and `transform` (`translate`, `scale`, `rotate`) each
+  frame, which the host draws; other properties they animate are not drawn.
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";

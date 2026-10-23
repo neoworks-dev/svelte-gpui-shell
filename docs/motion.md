@@ -51,9 +51,9 @@ draws the properties it knows:
 | `fade` | Fully. |
 | `fly` | Fully: the offset and the fade. |
 | `slide` | Vertically (the default `axis: "y"`): height, padding, margins and clipping. |
-| `scale` | Only its fade; scaling is not drawn. |
+| `scale` | Fully: the fade and the scaling, about the element's centre (see [Scale and rotate](styles.md#scale-and-rotate)). |
 | `blur`, `draw` | No. |
-| Your own, with `css` | `opacity` and `transform: translate(…)`, `translateX` and `translateY`. |
+| Your own, with `css` | `opacity` and `transform` with `translate(…)`, `translateX`, `translateY`, `scale(…)` and `rotate(…deg)`. |
 | Your own, with `tick` | Anything, since your code sets state each frame. |
 
 `animate:flip` needs an element in a keyed each block and does not apply here.

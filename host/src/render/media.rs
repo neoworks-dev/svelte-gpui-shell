@@ -1,13 +1,15 @@
 //! Canvases, images and icons.
 
 use gpui::prelude::*;
-use gpui::{Div, ObjectFit, SharedString, StyledImage, canvas, img, px, svg};
+use gpui::{Context, Div, ObjectFit, SharedString, StyledImage, Svg, Transformation, canvas, img, px, radians, svg};
 
 use super::{Inherited, Painter, attribute, is_far_away};
 use crate::assets::register_svg;
+use crate::icon_theme::{self, Format};
 use crate::images::ImageState;
-use crate::style::Style;
+use crate::style::{Dimension, Style};
 use crate::tree::{Node, NodeId};
+use crate::workbench::Workbench;
 
 impl Painter<'_> {
     /// The canvas's pixels, sized to its box at the window's scale and drawn as an image.
@@ -47,7 +49,7 @@ impl Painter<'_> {
 
     /// An image draws its file once the source has resolved to one, and only while it is
     /// near the window, decoded no larger than it is shown.
-    pub(super) fn image_content(&self, mut element: Div, id: NodeId, node: &Node, style: &Style) -> Div {
+    pub(super) fn image_content(&self, mut element: Div, id: NodeId, node: &Node, style: &Style, zoom: f32) -> Div {
         let source = attribute(node, "src");
         if source.is_empty() {
             return element;
@@ -61,7 +63,7 @@ impl Painter<'_> {
         // Until it is drawn the box takes the image's own proportions, so the page does not jump.
         if let (Some((natural_width, natural_height)), None) = (images.dimensions(&path), style.width) {
             if style.height.is_none() {
-                element = element.w(px(natural_width as f32)).max_w_full();
+                element = element.w(px(natural_width as f32 * zoom)).max_w_full();
             }
             if style.aspect_ratio.is_none() {
                 element.style().aspect_ratio = Some(natural_width as f32 / natural_height.max(1) as f32);
@@ -92,21 +94,86 @@ impl Painter<'_> {
         corners.bottom_left = bottom_left.map(|radius| px(radius).into());
         element.child(picture)
     }
+
+    /// An icon: SVG markup the app passed, a file, or a name from the icon theme, tinted with the
+    /// text colour unless it is a full-colour theme icon.
+    pub(super) fn icon_content(
+        &self,
+        mut element: Div,
+        node: &Node,
+        style: &Style,
+        inherited: &Inherited,
+        cx: &mut Context<Workbench>,
+    ) -> Div {
+        let side = match style.width {
+            Some(Dimension::Px(width)) => width,
+            _ => inherited.font_size,
+        };
+        if style.width.is_none() {
+            element = element.w(px(inherited.font_size));
+        }
+        if style.height.is_none() {
+            element = element.h(px(inherited.font_size));
+        }
+        if let Some(name) = node.attributes.get("name") {
+            let fallback = node.attributes.get("fallback");
+            return self.themed_icon(element, [Some(name), fallback], node, style, side, inherited, cx);
+        }
+        let path = match (node.attributes.get("svg"), node.attributes.get("src")) {
+            (Some(markup), _) => register_svg(markup.clone()),
+            (None, Some(source)) => source.clone(),
+            (None, None) => return element,
+        };
+        element.child(tinted(svg().path(SharedString::from(path)), style, inherited))
+    }
+
+    /// The first of `names` the icon theme has. A symbolic icon is tinted; a coloured one is drawn
+    /// as it is, from a raster the host makes at the size it is shown.
+    fn themed_icon(
+        &self,
+        element: Div,
+        names: [Option<&String>; 2],
+        node: &Node,
+        style: &Style,
+        side: f32,
+        inherited: &Inherited,
+        cx: &mut Context<Workbench>,
+    ) -> Div {
+        let scale = self.interaction.scale.get().max(1.0);
+        let theme = node.attributes.get("theme").map(String::as_str);
+        let found = names
+            .into_iter()
+            .flatten()
+            .find_map(|name| icon_theme::find(name, side.round().max(1.0) as u32, scale.ceil() as u32, theme));
+        let Some(file) = found else {
+            return element;
+        };
+        let pixels = ((side * scale).ceil() as u32).max(1).div_ceil(16) * 16;
+        match (file.format, file.symbolic) {
+            (Format::Svg, true) => {
+                let path = SharedString::from(file.path.to_string_lossy().into_owned());
+                element.child(tinted(svg().external_path(path), style, inherited))
+            }
+            (Format::Svg, false) => {
+                let image = self.interaction.images.raster(&cx.svg_renderer(), &file.path, pixels);
+                match image {
+                    Some(image) => element.child(img(image).size_full().object_fit(ObjectFit::Contain)),
+                    None => element,
+                }
+            }
+            (Format::Raster, _) => match self.interaction.images.scaled(&file.path, pixels) {
+                ImageState::Ready(path) => element.child(img(path).size_full().object_fit(ObjectFit::Contain)),
+                _ => element,
+            },
+        }
+    }
 }
 
-/// An icon: SVG markup the app passed, or a file, tinted with the text colour.
-pub(super) fn icon_content(mut element: Div, node: &Node, style: &Style, inherited: &Inherited) -> Div {
-    let path = match (node.attributes.get("svg"), node.attributes.get("src")) {
-        (Some(markup), _) => register_svg(markup.clone()),
-        (None, Some(source)) => source.clone(),
-        (None, None) => return element,
-    };
-    let side = inherited.font_size;
-    if style.width.is_none() {
-        element = element.w(px(side));
+/// A vector icon drawn in the text colour, turned when the style says so.
+fn tinted(mut drawing: Svg, style: &Style, inherited: &Inherited) -> Svg {
+    drawing = drawing.size_full().text_color(inherited.colour);
+    if let Some(degrees) = style.rotate {
+        drawing = drawing.with_transformation(Transformation::rotate(radians(degrees.to_radians())));
     }
-    if style.height.is_none() {
-        element = element.h(px(side));
-    }
-    element.child(svg().path(SharedString::from(path)).size_full().text_color(inherited.colour))
+    drawing
 }

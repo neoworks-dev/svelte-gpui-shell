@@ -3,7 +3,7 @@
 use gpui::{CursorStyle, Rgba, SharedString};
 use serde_json::Value;
 
-use super::{Align, Dimension, Easing, Justify, MONO, SANS, Shadow, Sides, Style, TextAlign, Transition};
+use super::{Align, Dimension, Easing, Gradient, Justify, MONO, SANS, Shadow, Sides, Style, TextAlign, Transition};
 
 impl Style {
     /// Sets one property from the style object. Returns false when it is not understood,
@@ -81,8 +81,16 @@ impl Style {
                 let y = parts.get(1).copied().flatten().unwrap_or(0.0);
                 self.translate = Some((x, y));
             }
+            "scale" => self.scale = number(value),
+            "rotate" => self.rotate = number(value),
             "transition" => self.transition = transition(value),
-            "background" => self.background = colour_of(value),
+            "background" => match value {
+                Value::Object(_) => match gradient(value) {
+                    Some(found) => self.gradient = Some(found),
+                    None => return false,
+                },
+                other => self.background = colour_of(other),
+            },
             "opacity" => self.opacity = number(value),
             "borderWidth" => self.border_width = sides(value).map(|side| side.and_then(pixels_of)),
             "borderTopWidth" => self.border_width[0] = number(value),
@@ -172,7 +180,16 @@ impl Style {
         let pixels = |value: &str| value.trim_end_matches("px").trim().parse::<f32>().ok();
         match name {
             "opacity" => self.opacity = value.parse().ok(),
-            "transform" => self.translate = Some(parse_translate(value)),
+            "transform" => {
+                let transform = parse_transform(value);
+                self.translate = Some(transform.translate);
+                if transform.scale.is_some() {
+                    self.scale = transform.scale;
+                }
+                if transform.rotate.is_some() {
+                    self.rotate = transform.rotate;
+                }
+            }
             "width" => self.width = length(value),
             "height" => self.height = length(value),
             "min-height" => self.min_height = length(value),
@@ -289,6 +306,26 @@ fn shadows(value: &Value) -> Option<Vec<Shadow>> {
         .collect()
 }
 
+/// `{ linear: { angle?, stops: [stop, stop] } }`, where a stop is a colour or `[colour, position]`.
+fn gradient(value: &Value) -> Option<Gradient> {
+    let linear = value.get("linear")?.as_object()?;
+    let angle = linear.get("angle").and_then(number).unwrap_or(180.0);
+    let stops = linear.get("stops")?.as_array()?;
+    let [first, second] = stops.as_slice() else {
+        return None;
+    };
+    Some(Gradient { angle, stops: [stop(first, 0.0)?, stop(second, 1.0)?] })
+}
+
+fn stop(value: &Value, default_position: f32) -> Option<(Rgba, f32)> {
+    match value {
+        Value::Array(parts) => {
+            Some((colour_of(parts.first()?)?, parts.get(1).and_then(number).unwrap_or(default_position)))
+        }
+        other => Some((colour_of(other)?, default_position)),
+    }
+}
+
 fn colour_of(value: &Value) -> Option<Rgba> {
     parse_colour(value.as_str()?)
 }
@@ -322,10 +359,18 @@ pub fn parse_colour(text: &str) -> Option<Rgba> {
     Some(Rgba { r: *parts.first()? / 255.0, g: *parts.get(1)? / 255.0, b: *parts.get(2)? / 255.0, a: alpha })
 }
 
-/// `translate(x, y)`, `translateX(x)` and `translateY(y)` from a CSS transform, in pixels.
-fn parse_translate(value: &str) -> (f32, f32) {
-    let mut x = 0.0;
-    let mut y = 0.0;
+/// What a CSS `transform` says that the host draws.
+#[derive(Debug, Default, PartialEq)]
+struct Transform {
+    translate: (f32, f32),
+    scale: Option<f32>,
+    rotate: Option<f32>,
+}
+
+/// `translate(x, y)`, `translateX(x)`, `translateY(y)`, `scale(s)` and `rotate(Ndeg)` from a CSS
+/// transform. Scales multiply, as the functions would compose, and a scale of two numbers takes the first.
+fn parse_transform(value: &str) -> Transform {
+    let mut transform = Transform::default();
     let mut rest = value;
     while let Some(open) = rest.find('(') {
         let name = rest[..open].trim();
@@ -334,18 +379,84 @@ fn parse_translate(value: &str) -> (f32, f32) {
         };
         let arguments: Vec<f32> = rest[open + 1..open + close]
             .split(',')
-            .map(|part| part.trim().trim_end_matches("px").parse().unwrap_or(0.0))
+            .map(|part| part.trim().trim_end_matches("px").trim_end_matches("deg").parse().unwrap_or(0.0))
             .collect();
+        let first = arguments.first().copied().unwrap_or(0.0);
         match name {
             "translate" => {
-                x += arguments.first().copied().unwrap_or(0.0);
-                y += arguments.get(1).copied().unwrap_or(0.0);
+                transform.translate.0 += first;
+                transform.translate.1 += arguments.get(1).copied().unwrap_or(0.0);
             }
-            "translateX" => x += arguments.first().copied().unwrap_or(0.0),
-            "translateY" => y += arguments.first().copied().unwrap_or(0.0),
+            "translateX" => transform.translate.0 += first,
+            "translateY" => transform.translate.1 += first,
+            "scale" => transform.scale = Some(transform.scale.unwrap_or(1.0) * first),
+            "rotate" => transform.rotate = Some(transform.rotate.unwrap_or(0.0) + first),
             _ => {}
         }
         rest = &rest[open + close + 1..];
     }
-    (x, y)
+    transform
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn style_of(value: Value) -> Style {
+        let mut style = Style::default();
+        for (name, value) in value.as_object().expect("an object") {
+            assert!(style.set(name, value), "{name} is understood");
+        }
+        style
+    }
+
+    #[test]
+    fn a_css_transform_gives_translation_scale_and_rotation() {
+        let transform = parse_transform("translate(4px, -2px) scale(0.5) rotate(90deg)");
+        assert_eq!(transform, Transform { translate: (4.0, -2.0), scale: Some(0.5), rotate: Some(90.0) });
+        assert_eq!(parse_transform("translateX(3px)").scale, None);
+    }
+
+    #[test]
+    fn scale_and_rotate_are_style_properties() {
+        let style = style_of(json!({ "scale": 1.25, "rotate": 45 }));
+        assert_eq!((style.scale, style.rotate), (Some(1.25), Some(45.0)));
+    }
+
+    #[test]
+    fn gradient_reads_angle_and_stops() {
+        let style =
+            style_of(json!({ "background": { "linear": { "angle": 135, "stops": [["#ff0000", 0.25], "#0000ff"] } } }));
+        let gradient = style.gradient.expect("a gradient");
+        assert_eq!(gradient.angle, 135.0);
+        assert_eq!(gradient.stops[0], (Rgba { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }, 0.25));
+        assert_eq!(gradient.stops[1], (Rgba { r: 0.0, g: 0.0, b: 1.0, a: 1.0 }, 1.0));
+        assert_eq!(style.background, None);
+    }
+
+    #[test]
+    fn gradient_points_down_by_default() {
+        let style = style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } }));
+        assert_eq!(style.gradient.expect("a gradient").angle, 180.0);
+    }
+
+    #[test]
+    fn gradient_needs_two_stops() {
+        let mut style = Style::default();
+        let three = json!({ "linear": { "stops": ["#000", "#888", "#fff"] } });
+        assert!(!style.set("background", &three));
+        assert_eq!(style.gradient, None);
+    }
+
+    #[test]
+    fn a_colour_patch_replaces_a_gradient_and_back() {
+        let mut base = style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } }));
+        base.overlay(&style_of(json!({ "background": "#123456" })));
+        assert!(base.background.is_some());
+        assert_eq!(base.gradient, None);
+        base.overlay(&style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } })));
+        assert!(base.gradient.is_some());
+        assert_eq!(base.background, None);
+    }
 }

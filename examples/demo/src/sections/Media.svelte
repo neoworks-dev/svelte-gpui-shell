@@ -64,6 +64,50 @@
     </View>
   </Card>
 
+  <Card title="Theme icons" note="Icons by name from the desktop's icon theme: coloured ones as they are, symbolic ones tinted. An absolute path or a fallback name works too.">
+    <View style={{ direction: "row", wrap: true, gap: 12, align: "center" }}>
+      <Icon name="folder" size={40} />
+      <Icon name="user-trash" size={40} />
+      <Icon name="drive-harddisk" size={40} />
+      <Icon name="no-such-icon-anywhere" fallback="folder" size={40} />
+      <Icon name="folder" size={20} />
+    </View>
+    <View style={{ direction: "row", wrap: true, gap: 12, align: "center" }}>
+      <Icon name="audio-volume-high-symbolic" size={20} color={colors.accentText} />
+      <Icon name="network-wireless-symbolic" size={20} color={colors.green} />
+      <Icon name="battery-full-symbolic" size={20} color={colors.amber} />
+      <Icon name="weather-clear-night-symbolic" size={20} color={colors.blue} />
+      <Icon name="system-shutdown-symbolic" size={20} color={colors.red} />
+    </View>
+  </Card>
+
+  <Card title="Gradients" note="A background can be a linear gradient between two colours, at any angle; radii clip it.">
+    <View style={{ direction: "row", wrap: true, gap: 12 }}>
+      {#each [0, 90, 135, 180] as angle (angle)}
+        <View
+          style={{
+            width: 110,
+            height: 80,
+            radius: 10,
+            justify: "end",
+            padding: 8,
+            background: { linear: { angle, stops: [colors.accent, colors.blue] } },
+          }}
+        >
+          <Text style={{ ...mono, color: "#ffffff" }}>{angle}deg</Text>
+        </View>
+      {/each}
+      <View
+        style={{
+          width: 110,
+          height: 80,
+          radius: [28, 4, 28, 4],
+          background: { linear: { angle: 160, stops: [[colors.pink, 0.3], [colors.amber, 0.9]] } },
+        }}
+      />
+    </View>
+  </Card>
+
   <View style={{ direction: "row", gap: 16, align: "start" }}>
     <Card title="Images" note="A file next to the bundle, drawn with object fit and rounded corners." style={{ flex: 1 }}>
       <Segmented options={["cover", "contain", "fill"]} bind:value={fit} />

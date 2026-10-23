@@ -8,8 +8,8 @@ import { Button, Canvas, Icon, Image, Input, List, Presence, Scroll, Text, View 
 ```
 
 Built on those are components for floating content (`Overlay`, `Popover`, `Tooltip`, `Menu`,
-`ContextMenu`, `Select`), for dragging inside the app (`Draggable`, `DropTarget`) and for
-trees (`Tree`), described after the primitives.
+`ContextMenu`, `Select`), for controls (`Switch`, `Slider`, `Meter`, `Spinner`), for dragging inside the
+app (`Draggable`, `DropTarget`) and for trees (`Tree`), described after the primitives.
 
 Each one draws as a single GPUI element. HTML tags (`<div>`, `<span>`, `<button>`) are
 not drawn at all. Neither are `class` or `style` strings: the host only knows the
@@ -279,12 +279,15 @@ proportions where they are known.
 
 ## Icon
 
-An SVG, tinted with one colour.
+An SVG tinted with one colour, or an icon from the desktop's icon theme.
 
 | Prop | Type | |
 |---|---|---|
 | `svg` | `string` | SVG markup. |
 | `src` | `string` | Or an SVG file's path. |
+| `name` | `string` | Or the name of a theme icon, such as `firefox`, `org.gnome.Nautilus` or `audio-volume-high-symbolic`. An absolute path is that file. See [Theme icons](#theme-icons). |
+| `fallback` | `string` | A second `name` to look up when the first is not in the theme. |
+| `theme` | `string` | An icon theme to look in instead of the desktop's current one, such as `Adwaita`. |
 | `size` | `number` | Width and height in pixels. The default is the font size around it. |
 | `color` | `Color` | The default is the text colour around it, so a button's `color` and `hover={{ color }}` tint its icon. |
 | `style` | `Style` | |
@@ -299,6 +302,33 @@ they are:
 
 <Icon svg={gear} size={18} />
 ```
+
+### Theme icons
+
+`<Icon name="firefox" size={32} />` draws the icon the desktop's icon theme has for that name, at
+that size on this display: the file in the theme's directory made for it, or the nearest one. The
+theme is read once from `gsettings get org.gnome.desktop.interface icon-theme`, else from
+`gtk-icon-theme-name` in GTK's `settings.ini`, else it is `hicolor`. The lookup follows the
+specification (the theme, the themes it `Inherits`, `hicolor`, then `/usr/share/pixmaps`) in
+`~/.icons`, `$XDG_DATA_HOME/icons` and `$XDG_DATA_DIRS/icons`, and remembers every answer.
+Restarting the app, or reloading it under `--watch`, reads the theme again.
+
+```svelte
+<Icon name="audio-volume-high-symbolic" size={16} color="#a1a1aa" />
+<Icon name={entry.icon} fallback="application-x-executable" size={48} />
+```
+
+- A **symbolic** icon, one whose name ends in `-symbolic`, is a mask and is tinted like any other
+  icon: with `color`, or the text colour around it.
+- Every other theme icon keeps its own colours. A PNG is drawn as it is, scaled down when the file
+  is much larger than the icon; an SVG is rasterised on a thread at the size it is drawn, and
+  appears a moment after the rest of the window.
+- `Icon=` in a `.desktop` file is a name or an absolute path, and `name` takes either. A name that
+  ends in `.png`, `.svg` or `.xpm` is looked up without the extension.
+- A name that is not found draws nothing, so give `fallback` where an icon must show. A missing
+  name is not shortened to a more general one (`foo-bar` does not become `foo`).
+- `rotate` turns a symbolic icon like any tinted one, and not a coloured one.
+- XPM files, and PNGs named `.symbolic.png`, are not read.
 
 ## Canvas
 
@@ -572,6 +602,88 @@ with Down, Enter or Space while the button has focus, has a `Menu`'s keys, and s
 ```svelte
 <Select bind:value={size} options={["Small", "Medium", "Large"]} />
 ```
+
+## Switch
+
+An on and off switch whose knob slides. It is pressed by the pointer, or with Enter or Space while it has focus. Children
+make a label that toggles it too.
+
+| Prop | Type | |
+|---|---|---|
+| `checked` | `boolean`, bindable | |
+| `disabled` | `boolean` | Drawn at 40% and does not respond. |
+| `size` | `number` | The track's height; its width is 1.8 times that. The default is 20. |
+| `onchange` | `(checked: boolean) => void` | Called when it is pressed, not when `checked` is set from outside. |
+| `style`, `hover`, `focus` | `Style` | The whole control, the track and the label. |
+| `trackStyle`, `knobStyle` | `Style` | |
+| `checkedStyle` | `Style` | Laid over `trackStyle` while it is on. |
+
+```svelte
+<Switch bind:checked={notify}>Notifications</Switch>
+<Switch bind:checked={dark} size={28} checkedStyle={{ background: "#4ade80" }} />
+```
+
+## Slider
+
+A value between `min` and `max`, set by pressing the track, dragging the knob, or with the arrow keys, Page Up and
+Down, Home and End while it has focus. The pointer stays captured while dragging, so it can leave the track. It is as
+wide as its parent in a column; give it a `width` or `flex: 1` in a row.
+
+| Prop | Type | |
+|---|---|---|
+| `value` | `number`, bindable | The default is 0. |
+| `min`, `max` | `number` | 0 and 100. |
+| `step` | `number` | What a drag snaps to, and an arrow key moves by: 1 by default. 0 allows any value. |
+| `disabled` | `boolean` | |
+| `knobSize` | `number` | The default is 16. The control is that and 4 more high. |
+| `onchange` | `(value: number) => void` | As the value changes, while dragging too, and for keys. |
+| `oncommit` | `(value: number) => void` | When a drag is released, and after each key. |
+| `style` | `Style` | The control, which takes the pointer. |
+| `trackStyle`, `fillStyle`, `knobStyle` | `Style` | |
+
+```svelte
+<Slider bind:value={volume} />
+<Slider bind:value={opacity} min={0} max={1} step={0.05} style={{ width: 200 }} />
+```
+
+## Meter
+
+A level bar: a track filled up to `value`. The fill eases to a new value, and `levels` change its colour as the value
+passes them. It only shows; nothing in it takes the pointer.
+
+| Prop | Type | |
+|---|---|---|
+| `value` | `number` | |
+| `min`, `max` | `number` | 0 and 100. |
+| `levels` | `{ upTo: number, color: Color }[]` | The colour of the first level the value does not exceed, and of the last one above them all. |
+| `color` | `Color` | The fill's colour when there are no levels. |
+| `vertical` | `boolean` | Fills from the bottom. Give it a `height`. |
+| `duration` | `number` | Milliseconds the fill takes to move; 0 moves it at once. The default is 200. |
+| `style`, `fillStyle` | `Style` | The track, which is 6 pixels thick, and the fill. |
+
+```svelte
+<Meter value={battery} levels={[{ upTo: 15, color: "#f87171" }, { upTo: 40, color: "#fbbf24" }, { upTo: 100, color: "#4ade80" }]} />
+```
+
+## Spinner
+
+An activity indicator for something that takes an unknown time: a ring that turns. It asks for a frame at every
+display refresh while it is on screen, so remove it when the work is done.
+
+| Prop | Type | |
+|---|---|---|
+| `size` | `number` | The default is 16. |
+| `color` | `Color` | The default is the text colour around it. |
+| `period` | `number` | Milliseconds for one turn. The default is 800. |
+| `style` | `Style` | |
+
+```svelte
+{#if loading}<Spinner size={24} color="#8b5cf6" />{/if}
+```
+
+`Switch`, `Slider`, `Meter` and `Spinner` are drawn with `View`, `Button` and `Icon` and the style and motion
+features described here, and take their colours from `controlsLook` (`import { controlsLook } from
+"@neoworks/svelte-gpui/ui"`). To change one control, pass styles; to change them all, copy the file from `runtime/ui/`.
 
 ## Draggable and DropTarget
 

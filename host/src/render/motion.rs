@@ -15,6 +15,7 @@ pub struct Eased {
     color: Option<Rgba>,
     border: Option<Rgba>,
     opacity: f32,
+    scale: f32,
 }
 
 /// A transition in flight: from where the element was to where its style now says.
@@ -64,6 +65,7 @@ impl Animation {
             color: mix_option(self.from.color, self.to.color, eased),
             border: mix_option(self.from.border, self.to.border, eased),
             opacity: self.from.opacity + (self.to.opacity - self.from.opacity) * eased,
+            scale: self.from.scale + (self.to.scale - self.from.scale) * eased,
         };
         (value, progress)
     }
@@ -88,6 +90,7 @@ impl Painter<'_> {
             color: style.color,
             border: style.border_color,
             opacity: style.opacity.unwrap_or(1.0),
+            scale: style.scale.unwrap_or(1.0),
         };
         let now = Instant::now();
         let mut animations = self.interaction.animations.borrow_mut();
@@ -110,6 +113,9 @@ impl Painter<'_> {
         style.border_color = shown.border;
         if shown.opacity < 1.0 || style.opacity.is_some() {
             style.opacity = Some(shown.opacity);
+        }
+        if shown.scale != 1.0 || style.scale.is_some() {
+            style.scale = Some(shown.scale);
         }
     }
 }

@@ -4,10 +4,11 @@
   Spring drive any number in a style.
 -->
 <script lang="ts">
-  import { fade, fly } from "svelte/transition";
+  import { fade, fly, scale } from "svelte/transition";
   import { Spring, Tween } from "svelte/motion";
   import { cubicInOut } from "svelte/easing";
-  import { Button, Presence, Text, View } from "@neoworks/svelte-gpui/ui";
+  import { Button, Icon, Presence, Text, View } from "@neoworks/svelte-gpui/ui";
+  import arrowUp from "@phosphor-icons/core/regular/arrow-up.svg";
   import Card from "../components/Card.svelte";
   import { button, buttonActive, buttonHover, caption, colors, mono } from "../theme";
 
@@ -25,6 +26,17 @@
   const progress = new Tween(0, { duration: 900, easing: cubicInOut });
   const ball = new Spring({ x: 40, y: 60 }, { stiffness: 0.08, damping: 0.35 });
   const area = { width: 520, height: 160 };
+
+  let popped = $state(true);
+  let turn = $state(0);
+
+  $effect(() => {
+    let handle = requestAnimationFrame(function step(time) {
+      turn = (time / 4) % 360;
+      handle = requestAnimationFrame(step);
+    });
+    return () => cancelAnimationFrame(handle);
+  });
 </script>
 
 <View style={{ gap: 16 }}>
@@ -85,6 +97,40 @@
       </View>
     </Card>
   </View>
+
+  <Card title="Scale and rotate" note="scale draws an element and its contents larger or smaller about its centre, and its neighbours stay put. rotate turns icons.">
+    <View style={{ direction: "row", gap: 12, align: "center" }}>
+      {#each [colors.accent, colors.blue, colors.green] as tint (tint)}
+        <View
+          style={{ size: 56, radius: 12, background: colors.raised, borderWidth: 1, borderColor: colors.strongBorder, align: "center", justify: "center", transition: 200 }}
+          hover={{ scale: 1.25, background: tint }}
+          onhover={() => {}}
+        >
+          <Text style={{ fontWeight: "bold" }}>Aa</Text>
+        </View>
+      {/each}
+      <View style={{ size: 56, radius: 12, background: colors.accentSoft, align: "center", justify: "center", scale: 0.6 }}>
+        <Text style={{ fontWeight: "bold" }}>0.6</Text>
+      </View>
+      <Text style={caption}>Hover a tile.</Text>
+    </View>
+    <View style={{ direction: "row", gap: 16, align: "center", color: colors.accentText }}>
+      {#each [0, 45, 90, 180] as angle (angle)}
+        <Icon svg={arrowUp} size={24} style={{ rotate: angle }} />
+      {/each}
+      <Icon svg={arrowUp} size={24} style={{ rotate: turn }} />
+      <Button style={button} hover={buttonHover} active={buttonActive} onpress={() => (popped = !popped)}>
+        <Text>{popped ? "Hide" : "Show"} the badge</Text>
+      </Button>
+      <View style={{ width: 90, height: 36, align: "center", justify: "center" }}>
+        {#if popped}
+          <Presence in={[scale, { duration: 250, start: 0.4 }]} out={[scale, { duration: 250, start: 0.4 }]} style={{ paddingX: 12, paddingY: 6, radius: 12, background: colors.accent }}>
+            <Text style={{ color: "#ffffff" }}>Popped</Text>
+          </Presence>
+        {/if}
+      </View>
+    </View>
+  </Card>
 
   <Card title="Spring" note="Move the pointer over the area; the ball follows on a spring.">
     <View

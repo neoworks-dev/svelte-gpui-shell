@@ -46,9 +46,13 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Scroll` | `style horizontal onscroll onlayout` (needs a bounded height) | `scrollTo(offset)`, `scrollBy(delta)`, `position()` (`{ x, y, maxX, maxY }`, reactive; `onscroll` also fires when `maxY` changes) |
 | `List` | `items rowHeight? estimatedRowHeight row={snippet(item, index)} key overscan stickToEnd style` (virtualised; without `rowHeight` rows are measured and may differ) | `scrollToIndex(i, { align })` |
 | `Image` | `src` (path, `data:`, `http(s)`) `fit style onload onerror` | |
-| `Icon` | `svg` (markup) or `src`, `size color style`; tinted by the text colour | |
+| `Icon` | `svg` (markup), `src`, or `name` (a freedesktop icon name such as `firefox` or `audio-volume-high-symbolic`, or an absolute path; `fallback`, `theme`), `size color style`; svg icons and `-symbolic` theme icons are tinted by the text colour, other theme icons keep their colours | |
 | `Canvas` | `style ondown onmove onup onhover onwheel onlayout` | `begin(x,y,pen) lineTo end line fillRect fillCircle clear` |
 | `Presence` | `in out style`, each a transition or `[fn, params]` | |
+| `Switch` | `bind:checked disabled size onchange style hover focus trackStyle checkedStyle knobStyle`; children are a label | |
+| `Slider` | `bind:value min max step disabled knobSize onchange oncommit style trackStyle fillStyle knobStyle`; width from its parent or `style` | |
+| `Meter` | `value min max levels color vertical duration style fillStyle` | |
+| `Spinner` | `size color period style`; draws every frame while mounted | |
 | `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
 | `Window` | `style title width height appId monitor layer anchor exclusiveZone margin keyboard namespace onclose`; its children are drawn in a window of their own, open while it is mounted; with `layer` it is a layer surface | |
 
@@ -63,7 +67,7 @@ These are the only keys; anything else is ignored. See `docs/styles.md` for valu
   columnGap padding paddingX paddingY padding{Top,Right,Bottom,Left} margin marginX
   marginY margin{Top,Right,Bottom,Left} display`
 - **Size and position:** `width height size minWidth minHeight maxWidth maxHeight
-  aspectRatio position inset top right bottom left overflow translate`
+  aspectRatio position inset top right bottom left overflow translate scale rotate`
 - **Paint:** `background opacity borderWidth border{Top,Right,Bottom,Left}Width
   borderColor radius shadow cursor transition`
 - **Text:** `color fontSize fontWeight fontFamily lineHeight italic underline
@@ -78,7 +82,12 @@ The values that trip people up:
 - `radius` is a number or four corners.
 - `fontFamily` is `"sans"` (Geist), `"mono"` (JetBrains Mono) or an installed font.
 - `lineHeight` is in pixels.
-- `transition` eases only `background`, `color`, `borderColor` and `opacity`. Animate
+- `background` is a colour or a two-stop gradient `{ linear: { angle, stops: [colour | [colour, 0..1], …] } }`
+  (angle in CSS degrees, default 180); no radial, no more than two stops, never eased.
+- `scale: 1.2` draws an element and its contents larger about its centre (lengths inside are multiplied;
+  a box with pixel `width` and `height` keeps its room). In `hover` it needs `transition` on the element.
+  `rotate: 90` (degrees) turns an `Icon` only; other primitives draw upright. Svelte's `scale` transition draws.
+- `transition` eases only `background`, `color`, `borderColor`, `opacity` and `scale`. Animate
   size and position with `Tween` or `Spring` driving `translate`, `width` and so on.
 - There is no `zIndex`: later siblings draw on top.
 - A flexible child that should truncate needs `minWidth: 0`.
@@ -158,8 +167,9 @@ A theme is plain data: exported `Style` objects spread together, or combined wit
 
 ## Patterns
 
-- **Controls** such as checkboxes, switches, sliders and tabs are Svelte components
-  built from `Button`/`View`. `examples/demo/src/components` has working ones.
+- **Controls:** `Switch` (`bind:checked`, children are its label), `Slider` (`bind:value min max step`, keys, `onchange`, `oncommit`),
+  `Meter` (`value`, `levels=[{ upTo, color }]`, `vertical`) and `Spinner` (`size color period`) come with the library.
+  Checkboxes and tabs are Svelte components built from `Button`/`View`; `examples/demo/src/components` has working ones.
 - **Drag or slider:** set a flag in `ondown`, update in `onmove`, clear it in `onup`.
   The pointer is captured, so moves keep arriving outside the element. Clamp `e.x`.
 - **Many marks** (drawings, plots): use one `Canvas`, never a `View` per mark.

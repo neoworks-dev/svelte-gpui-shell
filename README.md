@@ -115,14 +115,13 @@ From `@neoworks/svelte-gpui/ui`:
 | `Scroll` | Content that scrolls, vertically or `horizontal`, with `onscroll` and `scrollTo()`. |
 | `List` | Only the rows near the window are built, so 100,000 items cost what a screenful does. Rows of one height (`rowHeight`), or of different heights, which it measures as they are drawn while the window keeps its place. `scrollToIndex()`, `stickToEnd`. |
 | `Image` | A file path relative to the bundle, a `data:` URL, or an `http(s)` URL fetched on a thread and cached. It loads when it nears the window and is decoded no larger than it is drawn. |
-| `Icon` | SVG markup or a file, tinted with `color` or the text colour around it. The build loads `.svg` imports as text, so `import gear from "@phosphor-icons/core/regular/gear.svg"` works. |
+| `Icon` | SVG markup or a file, tinted with `color` or the text colour around it, or an icon from the desktop's icon theme by `name` (`<Icon name="firefox" size={32} />`), in its own colours unless it is symbolic. The build loads `.svg` imports as text, so `import gear from "@phosphor-icons/core/regular/gear.svg"` works. |
 | `Canvas` | Pixels to paint into. The host keeps a buffer at the window's scale and rasterises each call with tiny-skia as it arrives: `begin`, `lineTo`, `end`, `line`, `fillRect`, `fillCircle`, `clear`. A stroke costs the same however much is already drawn. Takes the pointer events `View` does. |
 | `Presence` | A view that plays Svelte transitions as it comes and goes: `<Presence in={[fly, { x: -20 }]} out={fade}>`. Svelte only allows `in:` and `out:` on elements, so this carries them through components. |
 | `Overlay` | Content drawn above everything, placed against its parent's box: a side, an alignment, a gap, flipped and shifted to stay in the window. Or at a point in the window. |
 
-Checkboxes, switches, sliders and segmented controls are not primitives. They are
-ordinary Svelte components built from these; the demo has one of each in
-`examples/demo/src/components`.
+Checkboxes and segmented controls are not primitives. They are ordinary Svelte components
+built from these; the demo has one of each in `examples/demo/src/components`.
 
 Some come with the library because they need the host's help, or are worth getting right once, and are
 imported from the same place:
@@ -133,6 +132,8 @@ imported from the same place:
 | `Tooltip` | A label that appears after the pointer has rested on its content. |
 | `Menu`, `ContextMenu` | A list of actions with keyboard control, in a popover or at the pointer on a right press. |
 | `Select` | A dropdown. |
+| `Switch`, `Slider` | An on and off switch with a bindable `checked`, and a draggable value between `min` and `max` with a bindable `value`, `step` and keys. |
+| `Meter`, `Spinner` | A level bar whose colour follows `levels`, and a ring that turns while something takes an unknown time. |
 | `Draggable`, `DropTarget` | Dragging inside the app: a preview follows the pointer, and targets hear the drag and the drop. |
 | `Tree` | Expanding and collapsing rows, keyboard navigation, built on `List`. |
 
@@ -195,7 +196,7 @@ on an attribute with `@name=value`:
 - `Canvas` draws strokes, lines, rectangles and circles; no paths with curves, text or
   images yet, and no reading pixels back.
 - Svelte transitions are drawn for opacity, translation, and the heights, padding and
-  margins vertical `slide` animates. `scale` and `blur` do not draw their own
+  margins vertical `slide` animates, and `scale`. `blur` does not draw its own
   properties. `animate:flip` has no element positions to work from.
 - `fetch` buffers whole bodies: no streams, `Blob` or `FormData`, and no cookies.
 - Overlays do not animate in or out, a drag does not scroll what is near the edge, and menus have no submenus.
