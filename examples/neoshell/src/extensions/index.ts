@@ -9,6 +9,7 @@ import bluetoothBackend from './bluetooth/backend.js'
 import weatherBackend from './weather/backend.js'
 import airQualityBackend from './airquality/backend.js'
 import neoshellViews from './neoshell/views.js'
+import quicksettingsViews from './quicksettings/views.js'
 
 // The extension registry. In the bun host an extension was a directory the
 // loader found by scanning for manifest.json and imported at runtime; one GJS
@@ -71,6 +72,10 @@ export const EXTENSIONS: Record<string, ExtensionModule> = {
   neoshell: {
     manifest: { id: 'neoshell', inject: ['bus', 'ui'] },
     views: neoshellViews,
+  },
+  quicksettings: {
+    manifest: { id: 'quicksettings', inject: ['bus', 'ui'] },
+    views: quicksettingsViews,
   },
   // The two widget providers. Their `widgets` declarations are what the
   // gallery lists — read from the manifest rather than from the mount list, so
