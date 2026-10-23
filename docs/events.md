@@ -29,6 +29,9 @@ handling, such as a field typing the key.
 | `ondown`, `onmove`, `onup` | `View`, `Canvas` | `PointerEvent` |
 | `onwheel` | `View`, `Canvas` | `WheelEvent` |
 
+Nothing is hovered, and no hover style applies, while no pointer is over the window: not before the
+first one enters a layer surface, and not after it leaves.
+
 ```ts
 interface PointerEvent {
   x: number; y: number;              // inside the element, from its top left
