@@ -49,7 +49,7 @@ impl Workbench {
                 let current = (-f32::from(offset.x), -f32::from(offset.y));
                 let previous = self.last_scroll.get(id).copied().unwrap_or((0.0, 0.0, 0.0, 0.0));
                 let content = handle.max_offset();
-                let furthest = (f32::from(content.width), f32::from(content.height));
+                let furthest = (f32::from(content.x), f32::from(content.y));
                 if !scroll_changed(previous, (current.0, current.1, furthest.0, furthest.1)) {
                     continue;
                 }

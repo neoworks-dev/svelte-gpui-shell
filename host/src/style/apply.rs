@@ -195,6 +195,7 @@ pub fn apply<T: Styled>(mut element: T, style: &Style) -> T {
                     offset: point(px(shadow.x), px(shadow.y)),
                     blur_radius: px(shadow.blur),
                     spread_radius: px(shadow.spread),
+                    inset: false,
                 })
                 .collect(),
         );

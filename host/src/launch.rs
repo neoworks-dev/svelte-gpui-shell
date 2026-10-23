@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use gpui::{App, Application, Bounds, TitlebarOptions, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, TitlebarOptions, WindowBounds, WindowOptions, prelude::*, px, size};
 
 use crate::assets;
 use crate::diagnostics::{heap_megabytes, memory_megabytes};
@@ -166,7 +166,7 @@ pub fn run(options: Options) {
         false => ErrorOutput::Log(errors::log_path(&app_name(&options))),
     };
 
-    Application::new().with_assets(assets::Assets).run(move |cx: &mut App| {
+    gpui_platform::application().with_assets(assets::Assets).run(move |cx: &mut App| {
         cx.text_system().add_fonts(assets::fonts()).expect("fonts load");
         println!("malloc after the fonts: {:.1} MB in use", heap_megabytes().0);
         let opening = open_options(&options, settings, cx);
@@ -192,7 +192,7 @@ pub fn run(options: Options) {
                 cx.background_executor().timer(Duration::from_millis(100)).await;
                 let outcome =
                     cx.update(|cx| window.update(cx, |workbench, window, cx| workbench.tick(false, window, cx)).ok());
-                if outcome.is_err() {
+                if outcome.is_none() {
                     return;
                 }
             }
@@ -206,8 +206,7 @@ pub fn run(options: Options) {
                     cx.background_executor().timer(Duration::from_millis(900)).await;
                     cx.update(|cx| {
                         window.update(cx, |workbench, window, cx| workbench.run_step(&step, window, cx)).ok();
-                    })
-                    .ok();
+                    });
                 }
             })
             .detach();
@@ -223,9 +222,8 @@ pub fn run(options: Options) {
                             failed_in_run.store(workbench.steps_failed(step_count), Ordering::Relaxed);
                         })
                         .ok();
-                })
-                .ok();
-                cx.update(|cx| cx.quit()).ok();
+                });
+                cx.update(|cx| cx.quit());
             })
             .detach();
         }

@@ -15,7 +15,8 @@ path = "src/main.rs"
 serde_json = "1"
 
 [dependencies]
-gpui = "0.2.2"
+gpui = { path = "../../gpui/crates/gpui" }
+gpui_platform = { path = "../../gpui/crates/gpui_platform", features = ["font-kit", "wayland", "x11"] }
 rquickjs = "0.14.0"
 serde_json = "1"
 tiny-skia = "0.11"
@@ -29,5 +30,3 @@ libc = "0.2"
 ttf-parser = "0.25"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
 
-[patch.crates-io]
-xattr = { path = "vendor/xattr" }

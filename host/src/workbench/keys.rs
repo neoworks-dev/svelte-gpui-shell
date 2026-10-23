@@ -1,7 +1,7 @@
 //! Focus and the keyboard: keys go to the app first, up from what has focus, then to
 //! the focused field or the clipboard.
 
-use gpui::{Context, KeyDownEvent, KeyUpEvent, Keystroke, Window};
+use gpui::{App, Context, KeyDownEvent, KeyUpEvent, Keystroke, Window};
 
 use super::Workbench;
 use crate::tree::{NodeId, Tree};
@@ -37,35 +37,35 @@ pub(super) fn press_outcome(tree: &Tree, takes_focus: impl Fn(NodeId) -> bool, i
 
 impl Workbench {
     /// Focuses an element the host made a focus handle for.
-    pub fn focus_node(&self, id: NodeId, window: &mut Window) {
+    pub fn focus_node(&self, id: NodeId, window: &mut Window, cx: &mut App) {
         if let Some(handle) = self.interaction.focus.borrow().get(&id) {
-            window.focus(handle);
+            window.focus(handle, cx);
         }
     }
 
     /// Takes focus away from an element, if it has it.
-    pub fn blur_node(&self, id: NodeId, window: &mut Window) {
+    pub fn blur_node(&self, id: NodeId, window: &mut Window, cx: &mut App) {
         if self.focused_node(window) == Some(id) {
-            self.blur_focused(window);
+            self.blur_focused(window, cx);
         }
     }
 
     /// Takes focus from whatever has it. Focus goes to the window itself, so no element of the
     /// app has it, as when a press lands on empty space.
-    pub fn blur_focused(&self, window: &mut Window) {
-        window.focus(&self.interaction.root_focus);
+    pub fn blur_focused(&self, window: &mut Window, cx: &mut App) {
+        window.focus(&self.interaction.root_focus, cx);
     }
 
     /// What a press on `id` does to focus, for a press the window did not already settle.
-    pub fn press_focus(&self, id: NodeId, window: &mut Window) {
+    pub fn press_focus(&self, id: NodeId, window: &mut Window, cx: &mut App) {
         let outcome = {
             let handles = self.interaction.focus.borrow();
             press_outcome(&self.svelte.tree.borrow(), |candidate| handles.contains_key(&candidate), id)
         };
         match outcome {
             Pressed::Keep => {}
-            Pressed::Focus(target) => self.focus_node(target, window),
-            Pressed::Blur => self.blur_focused(window),
+            Pressed::Focus(target) => self.focus_node(target, window, cx),
+            Pressed::Blur => self.blur_focused(window, cx),
         }
     }
 

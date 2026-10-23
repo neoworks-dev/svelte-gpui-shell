@@ -87,7 +87,7 @@ impl Workbench {
         cx: &mut Context<Self>,
     ) -> Self {
         let interaction = Interaction::new(images, svelte.fields.clone(), cx);
-        window.focus(&interaction.root_focus);
+        window.focus(&interaction.root_focus, cx);
         elements.attach(svelte.io.sink());
         let mut workbench = Workbench {
             svelte,
@@ -296,12 +296,12 @@ impl Workbench {
                 let Some(handle) = handles.get(id) else {
                     return false;
                 };
-                window.focus(handle);
+                window.focus(handle, cx);
                 true
             }
             Command::Call { .. } => self.carry_out_call(command, cx),
             Command::Blur(id) => {
-                self.blur_node(*id, window);
+                self.blur_node(*id, window, cx);
                 true
             }
             Command::ScrollTo(id, left, top) => {

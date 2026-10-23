@@ -4,7 +4,7 @@
 use gpui::prelude::*;
 use gpui::{
     AnyElement, ClickEvent, Context, Div, IntoElement, MouseButton, MouseDownEvent, MouseMoveEvent, ScrollDelta,
-    ScrollWheelEvent,
+    ScrollEvent,
 };
 
 use super::{Computed, Painter, Primitive};
@@ -82,8 +82,8 @@ impl Painter<'_> {
             // After the view's own handlers, a press that nothing took gives the view focus.
             element = element.on_mouse_down(
                 MouseButton::Left,
-                cx.listener(move |workbench, _: &MouseDownEvent, window, _cx| {
-                    workbench.focus_node(id, window);
+                cx.listener(move |workbench, _: &MouseDownEvent, window, cx| {
+                    workbench.focus_node(id, window, cx);
                 }),
             );
         }
@@ -109,7 +109,7 @@ impl Painter<'_> {
                         workbench.emit(id, "down", detail, cx);
                         // Nothing above this element hears the press, so what they would do with focus is done here.
                         if !window.default_prevented() {
-                            workbench.press_focus(id, window);
+                            workbench.press_focus(id, window, cx);
                         }
                         cx.stop_propagation();
                     }),
@@ -127,7 +127,7 @@ impl Painter<'_> {
             }));
         }
         if listens("wheel") {
-            element = element.on_scroll_wheel(cx.listener(move |workbench, event: &ScrollWheelEvent, _window, cx| {
+            element = element.on_scroll(cx.listener(move |workbench, event: &ScrollEvent, _window, cx| {
                 let (dx, dy) = match event.delta {
                     ScrollDelta::Pixels(delta) => (f32::from(delta.x), f32::from(delta.y)),
                     ScrollDelta::Lines(delta) => (delta.x * 16.0, delta.y * 16.0),

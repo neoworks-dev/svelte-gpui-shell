@@ -359,7 +359,7 @@ impl Element for Overlay {
             placed.prepaint(window, cx);
             self.placed = Some(placed);
         } else {
-            window.defer_draw(placed, window.element_offset(), self.layer);
+            window.defer_draw(placed, window.element_offset(), self.layer, None);
         }
     }
 

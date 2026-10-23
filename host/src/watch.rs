@@ -94,7 +94,7 @@ pub fn reload_on_change(window: WindowHandle<Workbench>, bundle: PathBuf, allow_
             let reloaded = cx.update(|cx| {
                 window.update(cx, |workbench, window, cx| workbench.bundle_changed(&path, &allow_files, window, cx))
             });
-            if !matches!(reloaded, Ok(Ok(()))) {
+            if reloaded.is_err() {
                 return;
             }
         }

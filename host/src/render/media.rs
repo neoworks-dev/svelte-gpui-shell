@@ -34,7 +34,7 @@ impl Painter<'_> {
                         bottom_right: radii[2],
                         bottom_left: radii[3],
                     };
-                    window.paint_image(bounds, corners, image, 0, false).ok();
+                    window.paint_image(bounds, bounds, corners, image, 0, false).ok();
                 }
             },
         )

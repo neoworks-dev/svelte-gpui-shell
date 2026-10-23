@@ -9,8 +9,8 @@ use crate::workbench::Workbench;
 /// reports as `prevent_default`, or by having `keepfocus`. It listens to the whole window, so a
 /// press on an overlay that hides the elements below it counts too.
 pub(super) fn press_ends_focus(cx: &mut Context<Workbench>) -> AnyElement {
-    let unclaimed = cx.listener(|workbench, _: &MouseDownEvent, window, _cx| {
-        workbench.blur_focused(window);
+    let unclaimed = cx.listener(|workbench, _: &MouseDownEvent, window, cx| {
+        workbench.blur_focused(window, cx);
     });
     canvas(
         |_, _, _| {},

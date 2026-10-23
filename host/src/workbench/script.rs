@@ -162,7 +162,7 @@ impl Workbench {
         if matches!(action, "down" | "move" | "up") {
             let (_, _, button) = pointer_argument(argument)?;
             if action == "down" {
-                self.press_focus(id, window);
+                self.press_focus(id, window, cx);
             }
             let id = if action == "down" {
                 // A press goes to the nearest element that takes this button, as a real one does.
@@ -183,7 +183,7 @@ impl Workbench {
                 if let Some(middle) = middle {
                     self.simulate_press_outside(middle, 0, cx);
                 }
-                self.press_focus(id, window);
+                self.press_focus(id, window, cx);
                 self.emit(target, "press", "{\"x\":0,\"y\":0,\"button\":0,\"clicks\":1}".to_string(), cx);
             }
             "focus" => {
@@ -198,7 +198,7 @@ impl Workbench {
                 let keystrokes = match action {
                     "key" => {
                         vec![
-                            Keystroke::parse(argument)
+                            Keystroke::parse_with_os(argument, cx.platform_info().os)
                                 .map_err(|_| format!("cannot read {argument:?} as a keystroke"))?,
                         ]
                     }
@@ -233,8 +233,8 @@ impl Workbench {
                 }
             }
             "key" => {
-                let keystroke =
-                    Keystroke::parse(argument).map_err(|_| format!("cannot read {argument:?} as a keystroke"))?;
+                let keystroke = Keystroke::parse_with_os(argument, cx.platform_info().os)
+                    .map_err(|_| format!("cannot read {argument:?} as a keystroke"))?;
                 self.handle_key(id, &keystroke, false, true, cx);
             }
             "scroll" => {

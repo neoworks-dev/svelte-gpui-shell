@@ -160,7 +160,7 @@ impl Painter<'_> {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(move |workbench, event: &MouseDownEvent, window, cx| {
-                    workbench.focus_node(id, window);
+                    workbench.focus_node(id, window, cx);
                     workbench.field_mouse_down(id, event.position, event.modifiers.shift);
                     workbench.caret_moved(id, cx);
                 }),

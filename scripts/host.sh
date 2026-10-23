@@ -14,7 +14,7 @@ set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 target=$root/target
-shared=${SHARED:-$HOME/Documents/neoworks/svelte-gpui/target}
+shared=${SHARED:-$HOME/Documents/neoworks/svelte-gpui-shell/target}
 
 if [ ! -d "$target/release/deps" ] && [ -d "$shared/release/deps" ]; then
   echo "seeding $target from $shared" >&2

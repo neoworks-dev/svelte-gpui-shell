@@ -3,6 +3,10 @@
 Native apps from Svelte 5 components, run in QuickJS and drawn by a Rust GPUI host.
 See README.md. svelte-gpui is its own project; Grove is one app that may use it.
 
+svelte-gpui-shell is svelte-gpui for Wayland shells. It builds against the GPUI fork in
+`../gpui` (branch `shell`: upstream Zed plus the layer-shell PRs it merges), not crates.io.
+Fixes that are not shell-specific belong in svelte-gpui first (remote `svelte-gpui`).
+
 - Apps are built from primitives (`runtime/ui/*.svelte`), each rendering one host
   tag (`g-view`, `g-text`, …) that `host/src/render/` draws. There is no HTML and
   no CSS: a tag the host does not know is not drawn. Host tags are prefixed because
@@ -21,7 +25,6 @@ See README.md. svelte-gpui is its own project; Grove is one app that may use it.
   seeds with the GPUI artifacts of the grove `gpui-spike` worktree. Never point
   `CARGO_TARGET_DIR` at a directory another checkout builds into: cargo names the
   host's artifacts the same from any checkout, so one's build stands in for another's.
-  `host/vendor/xattr` patches a `libc` incompatibility.
 - Test with `scripts/shot.sh`, which opens the window on a headless Hyprland output
   without focus. Never open a test window any other way: it takes the user's focus.
   Scripted steps run 0.9 s apart, so wait long enough before the

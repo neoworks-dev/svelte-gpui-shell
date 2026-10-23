@@ -118,7 +118,7 @@ impl Workbench {
             .id("errors")
             .w_full()
             .max_w(px(920.0))
-            .flex_shrink()
+            .flex_shrink(1.0)
             .min_h(px(0.0))
             .overflow_y_scroll()
             .flex()

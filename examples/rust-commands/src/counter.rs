@@ -117,7 +117,7 @@ impl Render for Counter {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, _: &MouseDownEvent, window, cx| {
-                    window.focus(&this.focus);
+                    window.focus(&this.focus, cx);
                     this.press(cx);
                 }),
             )

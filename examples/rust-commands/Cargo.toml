@@ -13,6 +13,3 @@ futures = "0.3"
 [features]
 # Set by scripts/package.mjs: runs the bundle packed into the binary instead of a --bundle file.
 package = []
-
-[patch.crates-io]
-xattr = { path = "../../host/vendor/xattr" }
