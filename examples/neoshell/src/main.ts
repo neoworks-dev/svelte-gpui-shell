@@ -26,8 +26,8 @@ import Shell from './Shell.svelte'
 const bus = new Bus()
 const registry = new ViewRegistry()
 
-// Programs the shell runs. `sh` and `setsid` launch the user's own
-// applications, so they are as wide as the .desktop files the user installed.
+// Programs the shell runs. `setsid` launches the user's own applications, so
+// it is as wide as the .desktop files the user installed.
 const PROGRAMS = [
   'nmcli',
   'bluetoothctl',
@@ -43,7 +43,7 @@ const PROGRAMS = [
   'getent',
   'gio',
   'setsid',
-  'sh',
+  'neoshell-windowcapture',
   '/usr/bin/unix_chkpwd',
 ]
 

@@ -6,3 +6,4 @@ wayland-scanner client-header hyprland-toplevel-export-v1.xml hyprland-toplevel-
 wayland-scanner private-code hyprland-toplevel-export-v1.xml hyprland-toplevel-export-v1-protocol.c
 cc -O2 -Wall -Wextra -o windowcapture windowcapture.c hyprland-toplevel-export-v1-protocol.c \
   $(pkg-config --cflags --libs wayland-client)
+echo "Put $PWD/windowcapture on PATH as neoshell-windowcapture, e.g. ln -s $PWD/windowcapture ~/.local/bin/neoshell-windowcapture"
