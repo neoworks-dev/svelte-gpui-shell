@@ -35,6 +35,8 @@
 
   let { bus, registry, args }: ViewProps = $props()
 
+  // The bus is the shell's own and does not change for the life of the view.
+  // svelte-ignore state_referenced_locally
   const store = new DesktopStore(bus)
 
   let band = $state<Band | null>(null)
