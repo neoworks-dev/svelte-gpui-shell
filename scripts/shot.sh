@@ -6,6 +6,8 @@
 #
 # It runs this checkout's host, built by scripts/host.sh. HOST names another executable to
 # run instead, such as an app's own binary or a packaged one.
+# An app that opens only layer surfaces (`start(App, {}, { window: false })`) is found among
+# `hyprctl layers`; its surfaces sit on the output named by the app's own `monitor`.
 # A BUNDLE of `-` passes no --bundle, and then no size either, for an app that has its own.
 # The output (OUTPUT, by default `svelte-gpui`) is created when it does not exist:
 #   hyprctl output create headless svelte-gpui
@@ -55,11 +57,18 @@ host_pid=$!
 address=""
 for _ in $(seq 100); do
   address=$(hyprctl clients -j | python3 -c "import json,sys; print(next((c['address'] for c in json.load(sys.stdin) if c['pid']==$host_pid),''))")
+  if [ -z "$address" ]; then
+    # An app that only has layer surfaces has no client window to find.
+    address=$(hyprctl layers -j | python3 -c "
+import json,sys
+levels=[l for o in json.load(sys.stdin).values() for l in o['levels'].values()]
+print(next((s['address'] for level in levels for s in level if s['pid']==$host_pid),''))")
+  fi
   if [ -n "$address" ]; then break; fi
   sleep 0.1
 done
 if [ -z "$address" ]; then
-  echo "no window appeared; see $log" >&2
+  echo "no window or layer surface appeared; see $log" >&2
   exit 1
 fi
 sleep "$seconds"
