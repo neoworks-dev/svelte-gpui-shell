@@ -3,6 +3,7 @@ import { requireService } from '../../lib/services.js'
 import { registerFunction, RetainedTopics } from '../../lib/bus.js'
 import type { BusService } from '../../lib/bus.js'
 import { environment, fileExists, modifiedAt, readDirectory, runtimeDirectory } from '../../system/fs.js'
+import { captureWindow } from './capture.js'
 import { request, streamLines } from '../../system/socket.js'
 
 // hypr: the compositor bridge. Window and workspace state is what the bar,
@@ -18,6 +19,7 @@ import { request, streamLines } from '../../system/socket.js'
 //   hypr:layerrule {namespace, blur?, blurPopups?, ignoreAlpha?}
 //                                            → {ok} | {error}
 //   hypr:request  {command}                  → {reply} | {error}
+//   hypr:capture  {address, width, height}   → {image, width, height} | {error}
 //
 // It also provides the in-kernel "hypr" service for other extensions.
 
@@ -51,6 +53,7 @@ const hyprExtension: Plugin.Object<HyprConfig | undefined> = {
     registerFunction(context, bus, 'hypr:keyword', (data) => runKeyword(client, data))
     registerFunction(context, bus, 'hypr:layerrule', (data) => runLayerRule(client, data))
     registerFunction(context, bus, 'hypr:request', (data) => runRequest(client, data))
+    registerFunction(context, bus, 'hypr:capture', (data) => captureWindow(data))
     context.provide('hypr', client)
   },
 }
@@ -306,13 +309,6 @@ async function runRequest(client: HyprClient, data: unknown): Promise<unknown> {
     return { error: 'command is required' }
   }
   return { reply: await client.request(args.command) }
-}
-
-function numberOr(value: number | undefined, fallback: number): number {
-  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-    return value
-  }
-  return fallback
 }
 
 function stringOrEmpty(value: string | undefined): string {

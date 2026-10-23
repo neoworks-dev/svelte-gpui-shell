@@ -1,4 +1,6 @@
-import { environment, homeDirectory, joinPath, readTextFile, systemPaths } from './fs.js'
+import { environment, homeDirectory, readTextFile, systemPaths } from './fs.js'
+import { joinPath } from './paths.js'
+import { userDirectoryOf } from './userDirs.js'
 
 // The freedesktop directories the backends read: where .desktop files live
 // and where the user keeps their desktop folder.
@@ -34,25 +36,3 @@ export async function desktopDirectory(): Promise<string> {
   }
   return joinPath(await homeDirectory(), 'Desktop')
 }
-
-export function userDirectoryOf(text: string | null, key: string, home: string): string | null {
-  if (text === null) {
-    return null
-  }
-  for (const line of text.split('\n')) {
-    const value = valueOfLine(line, key)
-    if (value !== null) {
-      return value.replace('$HOME', home)
-    }
-  }
-  return null
-}
-
-function valueOfLine(line: string, key: string): string | null {
-  const match = line.trim().match(new RegExp(`^${key}="(.*)"$`))
-  if (match === null) {
-    return null
-  }
-  return match[1]
-}
-

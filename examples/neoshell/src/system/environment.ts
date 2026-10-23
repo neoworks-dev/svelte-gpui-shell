@@ -1,4 +1,4 @@
-import { joinPath } from './fs.js'
+import { joinPath } from './paths.js'
 
 // How this run differs from a normal session, read from the environment so a
 // test can point the shell at a headless output and away from the user's own

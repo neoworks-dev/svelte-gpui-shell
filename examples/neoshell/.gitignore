@@ -1,0 +1,3 @@
+tools/windowcapture/windowcapture
+tools/windowcapture/*.h
+tools/windowcapture/hyprland-toplevel-export-v1-protocol.c
