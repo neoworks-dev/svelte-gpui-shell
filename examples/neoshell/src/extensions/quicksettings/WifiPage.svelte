@@ -1,7 +1,7 @@
 <script lang="ts">
   import { errorOf } from '../../lib/bus'
   import type { BusService } from '../../lib/bus'
-  import { Button, Icon, Input, Scroll, Switch, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Input, Scroll, Switch, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import { alpha, colors } from '../../theme'
   import { iconName, signalIcon, signalLabel } from './icons'
   import {
@@ -186,28 +186,33 @@
 
 <View style={{ gap: 12 }}>
   <View style={pageHeaderStyle}>
-    <!-- TODO(host: popups) the "Back", "Scan for networks" and "Wi-Fi enabled" tooltips. -->
-    <Button style={roundButtonStyle} hover={roundButtonHover} onpress={goBack}>
-      <Icon name={iconName('chevronLeft')} size={18} />
-    </Button>
+    <Tooltip text="Back">
+      <Button style={roundButtonStyle} hover={roundButtonHover} onpress={goBack}>
+        <Icon name={iconName('chevronLeft')} size={18} />
+      </Button>
+    </Tooltip>
     <Text style={pageTitleStyle}>{title}</Text>
     {#if mode === 'list'}
-      <Button
-        style={roundButtonStyle}
-        hover={roundButtonHover}
-        disabled={busy || !networkState.enabled}
-        disabledStyle={{ opacity: 0.4 }}
-        onpress={rescan}
-      >
-        <Icon name={iconName('refresh')} size={16} />
-      </Button>
-      <Switch
-        checked={networkState.enabled}
-        disabled={busy || !networkState.available}
-        trackStyle={{ background: alpha(colors.content, 0.2) }}
-        checkedStyle={{ background: colors.info }}
-        onchange={toggleRadio}
-      />
+      <Tooltip text="Scan for networks">
+        <Button
+          style={roundButtonStyle}
+          hover={roundButtonHover}
+          disabled={busy || !networkState.enabled}
+          disabledStyle={{ opacity: 0.4 }}
+          onpress={rescan}
+        >
+          <Icon name={iconName('refresh')} size={16} />
+        </Button>
+      </Tooltip>
+      <Tooltip text="Wi-Fi enabled">
+        <Switch
+          checked={networkState.enabled}
+          disabled={busy || !networkState.available}
+          trackStyle={{ background: alpha(colors.content, 0.2) }}
+          checkedStyle={{ background: colors.info }}
+          onchange={toggleRadio}
+        />
+      </Tooltip>
     {/if}
   </View>
 

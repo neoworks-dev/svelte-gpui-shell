@@ -1,7 +1,7 @@
 <script lang="ts">
   import { errorOf } from '../../lib/bus'
   import type { BusService } from '../../lib/bus'
-  import { Button, Icon, Scroll, Spinner, Switch, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Scroll, Spinner, Switch, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import type { Style } from '@neoworks/svelte-gpui/ui'
   import { alpha, colors } from '../../theme'
   import { deviceIcon, iconName } from './icons'
@@ -118,27 +118,32 @@
 
 <View style={{ gap: 12 }}>
   <View style={pageHeaderStyle}>
-    <!-- TODO(host: popups) the "Back", "Scan for devices" and "Bluetooth enabled" tooltips. -->
-    <Button style={roundButtonStyle} hover={roundButtonHover} onpress={onBack}>
-      <Icon name={iconName('chevronLeft')} size={18} />
-    </Button>
+    <Tooltip text="Back">
+      <Button style={roundButtonStyle} hover={roundButtonHover} onpress={onBack}>
+        <Icon name={iconName('chevronLeft')} size={18} />
+      </Button>
+    </Tooltip>
     <Text style={pageTitleStyle}>Bluetooth</Text>
-    <Button
-      style={roundButtonStyle}
-      hover={roundButtonHover}
-      disabled={busy || !bluetoothState.powered}
-      disabledStyle={{ opacity: 0.4 }}
-      onpress={scan}
-    >
-      <Icon name={iconName('refresh')} size={16} />
-    </Button>
-    <Switch
-      checked={bluetoothState.powered}
-      disabled={busy || !bluetoothState.available}
-      trackStyle={{ background: alpha(colors.content, 0.2) }}
-      checkedStyle={{ background: colors.info }}
-      onchange={togglePower}
-    />
+    <Tooltip text="Scan for devices">
+      <Button
+        style={roundButtonStyle}
+        hover={roundButtonHover}
+        disabled={busy || !bluetoothState.powered}
+        disabledStyle={{ opacity: 0.4 }}
+        onpress={scan}
+      >
+        <Icon name={iconName('refresh')} size={16} />
+      </Button>
+    </Tooltip>
+    <Tooltip text="Bluetooth enabled">
+      <Switch
+        checked={bluetoothState.powered}
+        disabled={busy || !bluetoothState.available}
+        trackStyle={{ background: alpha(colors.content, 0.2) }}
+        checkedStyle={{ background: colors.info }}
+        onchange={togglePower}
+      />
+    </Tooltip>
   </View>
 
   {#if failure !== ''}

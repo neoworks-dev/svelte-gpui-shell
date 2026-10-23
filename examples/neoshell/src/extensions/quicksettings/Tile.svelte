@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Icon, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import type { Style } from '@neoworks/svelte-gpui/ui'
   import { alpha, colors } from '../../theme'
   import { iconName } from './icons'
@@ -79,38 +79,39 @@
   }
 </script>
 
-<!-- TODO(host: popups) the compact tile's title tooltip and the chevron's "Open … settings" tooltip. -->
 {#if compact}
-  <Button
-    style={{
-      ...surface,
-      flex: 1,
-      height: TILE_HEIGHT,
-      radius: 16,
-      direction: 'column',
-      align: 'center',
-      justify: 'center',
-      gap: 2,
-      transition: 120,
-    }}
-    hover={surfaceHover}
-    {disabled}
-    onpress={activate}
-  >
-    <View
+  <Tooltip text={title} anchorStyle={{ flex: 1, alignSelf: 'stretch' }}>
+    <Button
       style={{
-        ...badge,
-        width: COMPACT_BADGE_SIZE,
-        height: COMPACT_BADGE_SIZE,
-        radius: COMPACT_BADGE_SIZE / 2,
+        ...surface,
+        flex: 1,
+        height: TILE_HEIGHT,
+        radius: 16,
+        direction: 'column',
         align: 'center',
         justify: 'center',
+        gap: 2,
+        transition: 120,
       }}
+      hover={surfaceHover}
+      {disabled}
+      onpress={activate}
     >
-      <Icon name={iconName(icon)} size={15} />
-    </View>
-    <Text style={{ fontSize: 10, color: colors.content, textAlign: 'center', maxLines: 2, maxWidth: 56 }}>{title}</Text>
-  </Button>
+      <View
+        style={{
+          ...badge,
+          width: COMPACT_BADGE_SIZE,
+          height: COMPACT_BADGE_SIZE,
+          radius: COMPACT_BADGE_SIZE / 2,
+          align: 'center',
+          justify: 'center',
+        }}
+      >
+        <Icon name={iconName(icon)} size={15} />
+      </View>
+      <Text style={{ fontSize: 10, color: colors.content, textAlign: 'center', maxLines: 2, maxWidth: 56 }}>{title}</Text>
+    </Button>
+  </Tooltip>
 {:else}
   <View
     style={{
@@ -149,14 +150,16 @@
       </View>
     </Button>
     {#if onOpen !== undefined}
-      <Button
-        style={{ paddingLeft: 4, paddingRight: 8, align: 'center', color: alpha(colors.content, 0.45), transition: 120 }}
-        hover={{ color: colors.content }}
-        {disabled}
-        onpress={open}
-      >
-        <Icon name={iconName('chevronRight')} size={15} />
-      </Button>
+      <Tooltip text="Open {title} settings" side="top" anchorStyle={{ alignSelf: 'stretch', justify: 'center' }}>
+        <Button
+          style={{ paddingLeft: 4, paddingRight: 8, align: 'center', color: alpha(colors.content, 0.45), transition: 120 }}
+          hover={{ color: colors.content }}
+          {disabled}
+          onpress={open}
+        >
+          <Icon name={iconName('chevronRight')} size={15} />
+        </Button>
+      </Tooltip>
     {/if}
   </View>
 {/if}

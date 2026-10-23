@@ -2,7 +2,7 @@
   import { errorOf, subscribeTo } from '../../lib/bus'
   import type { ViewProps } from '../../host/plugins/views'
   import { arrayOf, numberOf, recordOf, stringListOf, stringOf } from '../../lib/record'
-  import { Button, Icon, Presence, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Presence, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import type { Style } from '@neoworks/svelte-gpui/ui'
   import { fade, fly } from 'svelte/transition'
   import Surface from '../../Surface.svelte'
@@ -21,12 +21,10 @@
   //   quicksettings:toggle / :open / :close   drive visibility; :open takes
   //                                           {page: 'wifi' | 'bluetooth'}
   //
-  // The tray's window spans the output and exists only while the tray is open,
-  // which is what keeps the output click-through the rest of the time. A
-  // backdrop under the panel takes the click that lands anywhere else and
-  // dismisses it, the way a menu closes when clicked away from.
-  // TODO(host: input regions) keep the window and give it an empty input
-  // region while closed.
+  // The tray's window spans the output. While the tray is closed its input
+  // region is empty, so the output stays click-through; while open, a backdrop
+  // under the panel takes the click that lands anywhere else and dismisses it,
+  // the way a menu closes when clicked away from.
   //
   //   args.offsetTop   the bar's height plus the gap the panel hangs below it
   //   args.offsetEnd   the gap between the panel and the output's right edge
@@ -375,10 +373,14 @@
   ]
 </script>
 
-{#if open}
-  <Surface {args} keyboard="on-demand" style={{ background: windowBackground }}>
+<Surface {args} keyboard="on-demand" style={{ background: windowBackground }}>
+  {#if open}
     <!-- Takes the click that lands anywhere but on the panel. -->
-    <View style={{ position: 'absolute', inset: 0, background: windowBackground }} onpress={close}></View>
+    <View
+      input
+      style={{ position: 'absolute', inset: 0, background: windowBackground }}
+      onpress={close}
+    ></View>
 
     <Presence
       in={[fly, { y: -10, duration: 160 }]}
@@ -397,8 +399,11 @@
         {/if}
       </View>
     </Presence>
-  </Surface>
-{/if}
+  {:else}
+    <!-- An empty region is what keeps a closed tray click-through. -->
+    <View input style={{ width: 0, height: 0 }}></View>
+  {/if}
+</Surface>
 
 {#snippet mainPage()}
   <View style={{ gap: 8 }}>
@@ -451,24 +456,25 @@
   <View style={separatorStyle}></View>
 
   <View style={{ direction: 'row', align: 'center', gap: 4, paddingX: 2, paddingTop: 2 }}>
-    <!-- TODO(host: popups) the "Power options" tooltip. -->
-    <Button
-      style={{
-        direction: 'row',
-        align: 'center',
-        gap: 2,
-        paddingX: 6,
-        paddingY: 4,
-        radius: 16,
-        color: alpha(colors.content, 0.7),
-        transition: 120,
-      }}
-      hover={{ background: alpha(colors.content, 0.1) }}
-      onpress={() => (powerMenuOpen = !powerMenuOpen)}
-    >
-      <Icon name={iconName('power')} size={16} />
-      <Icon name={iconName('chevronDown')} size={12} />
-    </Button>
+    <Tooltip text="Power options" side="top">
+      <Button
+        style={{
+          direction: 'row',
+          align: 'center',
+          gap: 2,
+          paddingX: 6,
+          paddingY: 4,
+          radius: 16,
+          color: alpha(colors.content, 0.7),
+          transition: 120,
+        }}
+        hover={{ background: alpha(colors.content, 0.1) }}
+        onpress={() => (powerMenuOpen = !powerMenuOpen)}
+      >
+        <Icon name={iconName('power')} size={16} />
+        <Icon name={iconName('chevronDown')} size={12} />
+      </Button>
+    </Tooltip>
     <View style={{ flex: 1 }}></View>
     {#if batteryPercent >= 0}
       <Text style={{ fontSize: 11, paddingX: 4, color: alpha(colors.content, 0.6) }}>{batteryLabel()}</Text>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Button, Icon, Slider, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Slider, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import { alpha, colors } from '../../theme'
   import { iconName } from './icons'
 
@@ -47,58 +47,59 @@
   }
 </script>
 
-<!-- TODO(host: popups) the slider's label tooltip. -->
-<View style={{ height: ROW_HEIGHT }}>
-  <Slider
-    {value}
-    {disabled}
-    min={0}
-    max={100}
-    step={1}
-    knobSize={HIDDEN_KNOB}
-    onchange={handleChange}
-    style={{ height: ROW_HEIGHT }}
-    trackStyle={{ height: ROW_HEIGHT, radius: 16, background: alpha('#ffffff', 0.1) }}
-    fillStyle={{ height: ROW_HEIGHT, radius: 16, background: colors.info }}
-    knobStyle={{ opacity: 0, shadow: null, borderWidth: 0 }}
-  />
+<Tooltip text={label} side="top" anchorStyle={{ alignSelf: 'stretch' }}>
+  <View style={{ height: ROW_HEIGHT }}>
+    <Slider
+      {value}
+      {disabled}
+      min={0}
+      max={100}
+      step={1}
+      knobSize={HIDDEN_KNOB}
+      onchange={handleChange}
+      style={{ height: ROW_HEIGHT }}
+      trackStyle={{ height: ROW_HEIGHT, radius: 16, background: alpha('#ffffff', 0.1) }}
+      fillStyle={{ height: ROW_HEIGHT, radius: 16, background: colors.info }}
+      knobStyle={{ opacity: 0, shadow: null, borderWidth: 0 }}
+    />
 
-  <!-- The icon sits over the left end of the trough. It is only a button when
-       it does something: a mute toggle is clickable, a brightness lamp is not,
-       and a button that swallowed the click would leave that end of the
-       slider unreachable. -->
-  {#if iconInteractive}
-    <Button
-      style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        width: ICON_SLOT,
-        height: ROW_HEIGHT,
-        radius: 16,
-        align: 'center',
-        justify: 'center',
-        color: alpha(colors.content, 0.8),
-      }}
-      hover={{ color: colors.content }}
-      onpress={handleIconClick}
-    >
-      <Icon name={iconName(icon)} size={17} />
-    </Button>
-  {:else}
-    <View
-      style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        width: ICON_SLOT,
-        height: ROW_HEIGHT,
-        align: 'center',
-        justify: 'center',
-        color: alpha(colors.content, 0.8),
-      }}
-    >
-      <Icon name={iconName(icon)} size={17} />
-    </View>
-  {/if}
-</View>
+    <!-- The icon sits over the left end of the trough. It is only a button when
+         it does something: a mute toggle is clickable, a brightness lamp is not,
+         and a button that swallowed the click would leave that end of the
+         slider unreachable. -->
+    {#if iconInteractive}
+      <Button
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: ICON_SLOT,
+          height: ROW_HEIGHT,
+          radius: 16,
+          align: 'center',
+          justify: 'center',
+          color: alpha(colors.content, 0.8),
+        }}
+        hover={{ color: colors.content }}
+        onpress={handleIconClick}
+      >
+        <Icon name={iconName(icon)} size={17} />
+      </Button>
+    {:else}
+      <View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          width: ICON_SLOT,
+          height: ROW_HEIGHT,
+          align: 'center',
+          justify: 'center',
+          color: alpha(colors.content, 0.8),
+        }}
+      >
+        <Icon name={iconName(icon)} size={17} />
+      </View>
+    {/if}
+  </View>
+</Tooltip>
