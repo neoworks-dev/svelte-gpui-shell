@@ -438,8 +438,10 @@ inside a part of the window that did not redraw is not moved when the window is 
 
 A video file or stream, played by the host through GStreamer and drawn in its box. It loops and is
 muted unless told otherwise, which is what a live wallpaper wants. The host decodes with VA-API when
-the system has it and scales every frame to the size the box shows, so a video larger than the
-screen costs little more than one that fits. A host built without the `video` feature draws nothing
+the system has it, and then scales and converts on the GPU too (`vapostproc`); without it both
+happen on the CPU. Every frame is scaled to the size the box shows, so a video larger than the
+screen costs little more than one that fits: a 4K H.264 file at 60 fps takes about 10% of a core
+with VA-API and about 70 to 90% without. A file that does not exist calls `onerror` at once. A host built without the `video` feature draws nothing
 and the video's `onerror` fires.
 
 | Prop | Type | |

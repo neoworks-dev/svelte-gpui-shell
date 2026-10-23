@@ -70,6 +70,13 @@ Paths are relative to the app's directory.
 The packager writes these to `target/package/<app>/embed/` and builds the executable with
 them included (`include_bytes!`, through `svelte_gpui::embed!()`).
 
+### GStreamer
+
+The host links GStreamer for `Video` (the `video` cargo feature, on by default), so a packaged app
+needs `gstreamer`, its base plugins and, for most files, `gst-libav` or the VA plugins installed
+on the machine; nothing of it goes into the executable. An app that never plays a video can build
+the host with `--no-default-features` and loses the dependency.
+
 ### Where the files go at run time
 
 The bundle runs from the executable. **The files cannot**: GPUI reads images from files,

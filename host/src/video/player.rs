@@ -58,6 +58,7 @@ impl Player {
     /// Starts playing. An error says what the pipeline lacks, such as a plugin.
     pub fn start(node: NodeId, settings: Settings, sink: Sink) -> Result<Player, String> {
         gst::init().map_err(|error| format!("GStreamer does not start: {error}"))?;
+        prefer_va_decoders();
         if let Some(path) = settings.source.strip_prefix("file://") {
             if !std::path::Path::new(path).is_file() {
                 return Err(format!("the video file does not exist: {path}"));
@@ -69,10 +70,8 @@ impl Player {
                 .build()
                 .map_err(|_| format!("GStreamer has no {factory:?} element, which video needs"))
         };
-        let convert = make("videoconvert")?;
-        let scale = make("videoscale")?;
-        let caps = make("capsfilter")?;
         let appsink = gst_app::AppSink::builder().max_buffers(2).drop(true).sync(true).build();
+        let caps = make("capsfilter")?;
         let bin = gst::Bin::new();
         let mut chain: Vec<gst::Element> = Vec::new();
         if let Some(fps) = settings.max_fps {
@@ -81,7 +80,10 @@ impl Player {
             limit.set_property("max-rate", fps as i32);
             chain.push(limit);
         }
-        chain.extend([convert, scale.clone(), caps.clone(), appsink.clone().upcast()]);
+        let scaling = scaling_elements(&make)?;
+        let scale_input = scaling[0].clone();
+        chain.extend(scaling);
+        chain.extend([caps.clone(), appsink.clone().upcast()]);
         bin.add_many(chain.iter()).map_err(|error| error.to_string())?;
         gst::Element::link_many(chain.iter()).map_err(|error| error.to_string())?;
         let entry = chain[0].static_pad("sink").ok_or("the video sink has no input")?;
@@ -112,7 +114,7 @@ impl Player {
             node,
             sink,
             pipeline,
-            scale_input: scale,
+            scale_input,
             caps,
             shared,
             live,
@@ -282,6 +284,36 @@ fn frame_callbacks(node: NodeId, shared: Arc<Shared>, sink: Sink) -> gst_app::Ap
             Ok(gst::FlowSuccess::Ok)
         })
         .build()
+}
+
+/// What turns decoded frames into BGRA at the size the box shows. A VA-API post-processor does
+/// both on the GPU, so only the scaled frame is copied to memory; without one it is the CPU's
+/// `videoconvert` and `videoscale`, which cost several cores on a 4K video.
+fn scaling_elements(make: &impl Fn(&str) -> Result<gst::Element, String>) -> Result<Vec<gst::Element>, String> {
+    if let Ok(post) = gst::ElementFactory::make("vapostproc").build() {
+        post.set_property("add-borders", false);
+        return Ok(vec![post]);
+    }
+    Ok(vec![make("videoconvert")?, make("videoscale")?])
+}
+
+/// Makes the system's VA-API decoders win over the others (NVDEC ties with them at the default
+/// rank), since they hand frames to `vapostproc` without leaving the GPU.
+fn prefer_va_decoders() {
+    let registry = gst::Registry::get();
+    let factories = gst::ElementFactory::factories_with_type(
+        gst::ElementFactoryType::DECODER | gst::ElementFactoryType::MEDIA_VIDEO,
+        gst::Rank::NONE,
+    );
+    for factory in factories {
+        let name = factory.name();
+        if !name.starts_with("va") || !name.ends_with("dec") {
+            continue;
+        }
+        if let Some(feature) = registry.lookup_feature(name.as_str()) {
+            feature.set_rank(gst::Rank::from(512));
+        }
+    }
 }
 
 /// The rows of a BGRA plane without the padding after each.
