@@ -88,6 +88,14 @@ pub struct Transition {
     pub easing: Easing,
 }
 
+/// A linear gradient between two colours. The angle is in degrees, 0 pointing up and
+/// increasing clockwise; each stop is a colour and its position from 0 to 1 along the line.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Gradient {
+    pub angle: f32,
+    pub stops: [(Rgba, f32); 2],
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Shadow {
     pub x: f32,
@@ -127,6 +135,8 @@ pub struct Style {
     pub translate: Option<(f32, f32)>,
     pub transition: Option<Transition>,
     pub background: Option<Rgba>,
+    /// Replaces `background` when set: a style has one or the other.
+    pub gradient: Option<Gradient>,
     pub opacity: Option<f32>,
     pub border_width: Sides<Option<f32>>,
     pub border_color: Option<Rgba>,
@@ -191,6 +201,12 @@ pub fn parsed(json: &str) -> Rc<Style> {
 impl Style {
     /// Lays `other` over this style: whatever `other` sets wins.
     pub fn overlay(&mut self, other: &Style) {
+        if other.background.is_some() {
+            self.gradient = None;
+        }
+        if other.gradient.is_some() {
+            self.background = None;
+        }
         macro_rules! take {
             ($($field:ident),*) => {
                 $(if other.$field.is_some() { self.$field = other.$field.clone(); })*
@@ -220,6 +236,7 @@ impl Style {
             translate,
             transition,
             background,
+            gradient,
             opacity,
             border_color,
             shadow,

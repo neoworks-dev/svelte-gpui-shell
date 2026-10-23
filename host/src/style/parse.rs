@@ -3,7 +3,7 @@
 use gpui::{CursorStyle, Rgba, SharedString};
 use serde_json::Value;
 
-use super::{Align, Dimension, Easing, Justify, MONO, SANS, Shadow, Sides, Style, TextAlign, Transition};
+use super::{Align, Dimension, Easing, Gradient, Justify, MONO, SANS, Shadow, Sides, Style, TextAlign, Transition};
 
 impl Style {
     /// Sets one property from the style object. Returns false when it is not understood,
@@ -82,7 +82,13 @@ impl Style {
                 self.translate = Some((x, y));
             }
             "transition" => self.transition = transition(value),
-            "background" => self.background = colour_of(value),
+            "background" => match value {
+                Value::Object(_) => match gradient(value) {
+                    Some(found) => self.gradient = Some(found),
+                    None => return false,
+                },
+                other => self.background = colour_of(other),
+            },
             "opacity" => self.opacity = number(value),
             "borderWidth" => self.border_width = sides(value).map(|side| side.and_then(pixels_of)),
             "borderTopWidth" => self.border_width[0] = number(value),
@@ -289,6 +295,26 @@ fn shadows(value: &Value) -> Option<Vec<Shadow>> {
         .collect()
 }
 
+/// `{ linear: { angle?, stops: [stop, stop] } }`, where a stop is a colour or `[colour, position]`.
+fn gradient(value: &Value) -> Option<Gradient> {
+    let linear = value.get("linear")?.as_object()?;
+    let angle = linear.get("angle").and_then(number).unwrap_or(180.0);
+    let stops = linear.get("stops")?.as_array()?;
+    let [first, second] = stops.as_slice() else {
+        return None;
+    };
+    Some(Gradient { angle, stops: [stop(first, 0.0)?, stop(second, 1.0)?] })
+}
+
+fn stop(value: &Value, default_position: f32) -> Option<(Rgba, f32)> {
+    match value {
+        Value::Array(parts) => {
+            Some((colour_of(parts.first()?)?, parts.get(1).and_then(number).unwrap_or(default_position)))
+        }
+        other => Some((colour_of(other)?, default_position)),
+    }
+}
+
 fn colour_of(value: &Value) -> Option<Rgba> {
     parse_colour(value.as_str()?)
 }
@@ -348,4 +374,54 @@ fn parse_translate(value: &str) -> (f32, f32) {
         rest = &rest[open + close + 1..];
     }
     (x, y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn style_of(value: Value) -> Style {
+        let mut style = Style::default();
+        for (name, value) in value.as_object().expect("an object") {
+            assert!(style.set(name, value), "{name} is understood");
+        }
+        style
+    }
+
+    #[test]
+    fn gradient_reads_angle_and_stops() {
+        let style =
+            style_of(json!({ "background": { "linear": { "angle": 135, "stops": [["#ff0000", 0.25], "#0000ff"] } } }));
+        let gradient = style.gradient.expect("a gradient");
+        assert_eq!(gradient.angle, 135.0);
+        assert_eq!(gradient.stops[0], (Rgba { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }, 0.25));
+        assert_eq!(gradient.stops[1], (Rgba { r: 0.0, g: 0.0, b: 1.0, a: 1.0 }, 1.0));
+        assert_eq!(style.background, None);
+    }
+
+    #[test]
+    fn gradient_points_down_by_default() {
+        let style = style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } }));
+        assert_eq!(style.gradient.expect("a gradient").angle, 180.0);
+    }
+
+    #[test]
+    fn gradient_needs_two_stops() {
+        let mut style = Style::default();
+        let three = json!({ "linear": { "stops": ["#000", "#888", "#fff"] } });
+        assert!(!style.set("background", &three));
+        assert_eq!(style.gradient, None);
+    }
+
+    #[test]
+    fn a_colour_patch_replaces_a_gradient_and_back() {
+        let mut base = style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } }));
+        base.overlay(&style_of(json!({ "background": "#123456" })));
+        assert!(base.background.is_some());
+        assert_eq!(base.gradient, None);
+        base.overlay(&style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } })));
+        assert!(base.gradient.is_some());
+        assert_eq!(base.background, None);
+    }
 }

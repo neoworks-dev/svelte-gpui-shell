@@ -64,6 +64,33 @@
     </View>
   </Card>
 
+  <Card title="Gradients" note="A background can be a linear gradient between two colours, at any angle; radii clip it.">
+    <View style={{ direction: "row", wrap: true, gap: 12 }}>
+      {#each [0, 90, 135, 180] as angle (angle)}
+        <View
+          style={{
+            width: 110,
+            height: 80,
+            radius: 10,
+            justify: "end",
+            padding: 8,
+            background: { linear: { angle, stops: [colors.accent, colors.blue] } },
+          }}
+        >
+          <Text style={{ ...mono, color: "#ffffff" }}>{angle}deg</Text>
+        </View>
+      {/each}
+      <View
+        style={{
+          width: 110,
+          height: 80,
+          radius: [28, 4, 28, 4],
+          background: { linear: { angle: 160, stops: [[colors.pink, 0.3], [colors.amber, 0.9]] } },
+        }}
+      />
+    </View>
+  </Card>
+
   <View style={{ direction: "row", gap: 16, align: "start" }}>
     <Card title="Images" note="A file next to the bundle, drawn with object fit and rounded corners." style={{ flex: 1 }}>
       <Segmented options={["cover", "contain", "fill"]} bind:value={fit} />

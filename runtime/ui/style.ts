@@ -12,6 +12,21 @@ export type Sides<T> = T | [T, T] | [T, T, T, T];
 
 export type Align = "start" | "center" | "end" | "stretch" | "baseline";
 
+/** A colour at the start or end of a gradient, or `[colour, position]` with the position from 0 to 1. */
+export type GradientStop = Color | [Color, number];
+
+/**
+ * A straight blend between two colours. `angle` is in degrees, 0 pointing up and
+ * increasing clockwise as in CSS; it defaults to 180, top to bottom.
+ */
+export interface LinearGradient {
+  angle?: number;
+  stops: [GradientStop, GradientStop];
+}
+
+/** A plain colour, or a gradient: `{ linear: { angle: 135, stops: ["#7c3aed", "#2563eb"] } }`. */
+export type Background = Color | { linear: LinearGradient };
+
 export interface Shadow {
   x?: number;
   y?: number;
@@ -84,7 +99,7 @@ export interface Style {
   translate?: [number, number];
 
   // Paint.
-  background?: Color;
+  background?: Background;
   opacity?: number;
   borderWidth?: Sides<number>;
   borderTopWidth?: number;

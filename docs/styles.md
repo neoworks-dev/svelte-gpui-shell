@@ -82,7 +82,7 @@ long text inside it can truncate instead of pushing the layout wider.
 
 | Property | Values | |
 |---|---|---|
-| `background` | `Color` | |
+| `background` | `Color` \| `{ linear: { angle?, stops } }` | A colour, or a [gradient](#gradients). |
 | `opacity` | `number` | 0 to 1, for the element and everything inside it. |
 | `borderWidth` | `Sides<number>` | |
 | `borderTopWidth`, `borderRightWidth`, `borderBottomWidth`, `borderLeftWidth` | `number` | |
@@ -90,6 +90,23 @@ long text inside it can truncate instead of pushing the layout wider.
 | `radius` | `number` \| `[topLeft, topRight, bottomRight, bottomLeft]` | Corner radius. |
 | `shadow` | `Shadow` \| `Shadow[]` \| `null` | `{ x?, y?, blur?, spread?, color? }`. The colour defaults to black at 30%. |
 | `cursor` | `"default"` \| `"pointer"` \| `"text"` \| `"grab"` \| `"grabbing"` \| `"crosshair"` \| `"col-resize"` \| `"row-resize"` \| `"not-allowed"` | The pointer's shape over the element. |
+
+### Gradients
+
+A `background` can be a linear gradient between two colours:
+
+```svelte
+<View style={{ background: { linear: { angle: 135, stops: ["#7c3aed", "#2563eb"] } } }} />
+<View style={{ background: { linear: { stops: [["#00000000", 0.4], "#000000cc"] } } }} />
+```
+
+`angle` is in degrees as in CSS: 0 points up, 90 right, and it defaults to 180, top to bottom. A stop is a
+colour, or `[colour, position]` with the position from 0 to 1 along the line; the first defaults to 0 and
+the second to 1, and the colours stay flat outside them. Radii clip a gradient like any other background.
+
+What is not there: a gradient has exactly two stops, and there are no radial or conic gradients; GPUI's
+renderer draws only that. A gradient does not ease under `transition`, and `hover`, `active` and `focus`
+can swap one for a colour or another gradient, but not blend.
 
 ## Text
 

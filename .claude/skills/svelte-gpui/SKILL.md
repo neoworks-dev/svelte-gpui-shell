@@ -77,6 +77,8 @@ The values that trip people up:
 - `radius` is a number or four corners.
 - `fontFamily` is `"sans"` (Geist), `"mono"` (JetBrains Mono) or an installed font.
 - `lineHeight` is in pixels.
+- `background` is a colour or a two-stop gradient `{ linear: { angle, stops: [colour | [colour, 0..1], …] } }`
+  (angle in CSS degrees, default 180); no radial, no more than two stops, never eased.
 - `transition` eases only `background`, `color`, `borderColor` and `opacity`. Animate
   size and position with `Tween` or `Spring` driving `translate`, `width` and so on.
 - There is no `zIndex`: later siblings draw on top.

@@ -1,8 +1,8 @@
 //! Putting a parsed style onto GPUI elements and refinements.
 
-use gpui::{BoxShadow, FontWeight, Length, Styled, auto, point, px, relative};
+use gpui::{BoxShadow, FontWeight, Length, Styled, auto, linear_color_stop, linear_gradient, point, px, relative};
 
-use super::{Align, Dimension, Justify, Style, TextAlign};
+use super::{Align, Dimension, Gradient, Justify, Style, TextAlign};
 
 fn length(dimension: Dimension) -> Length {
     match dimension {
@@ -151,6 +151,9 @@ pub fn apply<T: Styled>(mut element: T, style: &Style) -> T {
     }
     if let Some(colour) = style.background {
         element = element.bg(colour);
+    }
+    if let Some(Gradient { angle, stops: [(from, from_at), (to, to_at)] }) = style.gradient {
+        element = element.bg(linear_gradient(angle, linear_color_stop(from, from_at), linear_color_stop(to, to_at)));
     }
     if let Some(opacity) = style.opacity {
         element = element.opacity(opacity);
