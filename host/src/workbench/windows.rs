@@ -134,7 +134,7 @@ impl Workbench {
         self.emit(root, "close", "{}".to_string(), cx);
     }
 
-    fn forget_window(&mut self, root: NodeId) {
+    pub(super) fn forget_window(&mut self, root: NodeId) {
         self.windows.open.retain(|open| open.root != root);
         self.interaction.window_focus.borrow_mut().remove(&root);
         self.interaction.window_roots.borrow_mut().retain(|_, drawn| *drawn != root);
