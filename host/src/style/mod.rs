@@ -165,6 +165,7 @@ pub struct Style {
     pub truncate: Option<bool>,
     pub max_lines: Option<usize>,
     pub uppercase: Option<bool>,
+    pub tabular_numbers: Option<bool>,
     pub cursor: Option<CursorStyle>,
 }
 
@@ -264,6 +265,7 @@ impl Style {
             truncate,
             max_lines,
             uppercase,
+            tabular_numbers,
             cursor
         );
         for side in 0..4 {

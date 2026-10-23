@@ -147,6 +147,7 @@ impl Style {
             "truncate" => self.truncate = value.as_bool(),
             "maxLines" => self.max_lines = value.as_u64().map(|lines| lines as usize),
             "uppercase" => self.uppercase = value.as_bool(),
+            "tabularNumbers" => self.tabular_numbers = value.as_bool(),
             "cursor" => {
                 self.cursor = match value.as_str() {
                     Some("default") => Some(CursorStyle::Arrow),
@@ -445,6 +446,11 @@ mod tests {
         let transform = parse_transform("translate(4px, -2px) scale(0.5) rotate(90deg)");
         assert_eq!(transform, Transform { translate: (4.0, -2.0), scale: Some(0.5), rotate: Some(90.0) });
         assert_eq!(parse_transform("translateX(3px)").scale, None);
+    }
+
+    #[test]
+    fn tabular_numbers_is_a_text_style() {
+        assert_eq!(style_of(json!({ "tabularNumbers": true })).tabular_numbers, Some(true));
     }
 
     #[test]

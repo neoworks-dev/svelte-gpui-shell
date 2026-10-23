@@ -72,7 +72,7 @@ These are the only keys; anything else is ignored. See `docs/styles.md` for valu
 - **Paint:** `background opacity borderWidth border{Top,Right,Bottom,Left}Width
   borderColor radius shadow cursor transition`
 - **Text:** `color fontSize fontWeight fontFamily lineHeight italic underline
-  strikethrough textAlign nowrap truncate maxLines uppercase`
+  strikethrough textAlign nowrap truncate maxLines uppercase tabularNumbers`
 
 The values that trip people up:
 

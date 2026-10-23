@@ -163,6 +163,8 @@ export interface Style {
   truncate?: boolean;
   maxLines?: number;
   uppercase?: boolean;
+  /** Digits of equal width (the font's `tnum` feature), so a clock or a counter does not shift what follows it. Inherited by nested `Text`. A font without the feature draws as before. */
+  tabularNumbers?: boolean;
 }
 
 /** A style as the host reads it, or nothing. */

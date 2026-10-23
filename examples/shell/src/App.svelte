@@ -13,6 +13,7 @@
   import Bytes from "./Bytes.svelte";
   import Push from "./Push.svelte";
   import Gradients from "./Gradients.svelte";
+  import Numbers from "./Numbers.svelte";
   import VideoScene from "./Video.svelte";
 
   const present = $derived(monitors.list.some((monitor) => monitor.name === __OUTPUT__));
@@ -43,6 +44,8 @@
     <Push monitor={__OUTPUT__} />
   {:else if __SCENE__ === "gradients"}
     <Gradients monitor={__OUTPUT__} />
+  {:else if __SCENE__ === "numbers"}
+    <Numbers monitor={__OUTPUT__} />
   {:else if __SCENE__ === "hover"}
     <Hover monitor={__OUTPUT__} />
   {:else if __SCENE__ === "empty"}

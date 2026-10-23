@@ -160,6 +160,7 @@ setting `color` or `fontSize` on a `Button` styles its label.
 | `fontFamily` | `"sans"` \| `"mono"` \| an installed font's name | `"sans"` is Geist and `"mono"` is JetBrains Mono, both bundled with the host. Geist is the default. |
 | `lineHeight` | `number` | In pixels. |
 | `italic`, `underline`, `strikethrough`, `uppercase` | `boolean` | |
+| `tabularNumbers` | `boolean` | Digits of equal width, so a clock or a counter does not shift what follows it. Needs a font with the `tnum` feature: the bundled Geist has it, a font without it draws as before. |
 | `textAlign` | `"left"` \| `"center"` \| `"right"` | |
 | `nowrap` | `boolean` | Keeps text on one line. |
 | `truncate` | `boolean` | One line, cut off with an ellipsis. |
