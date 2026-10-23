@@ -33,7 +33,7 @@
   >
     <View style={{ direction: 'row', gap: 8 }}>
       <Text style={{ color: alpha(colors.content, 0.6) }}>{shortDate(now)}</Text>
-      <Text>{clockTime(now)}</Text>
+      <Text style={{ tabularNumbers: true }}>{clockTime(now)}</Text>
     </View>
   </Button>
 </Tooltip>

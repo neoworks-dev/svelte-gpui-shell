@@ -48,7 +48,7 @@
     <View style={{ flex: 1, direction: 'row', align: 'center', gap: 8 }}>
       <Text style={{ ...dayLabelStyle, width: 36, truncate: true }}>{day.label}</Text>
       <Icon name={weatherIcon(day.code, true)} size={ICON_PIXELS} />
-      <Text style={{ ...dayLabelStyle, color: alpha(colors.content, 0.6), width: 26, textAlign: 'right' }}>{day.low}°</Text>
+      <Text style={{ ...dayLabelStyle, color: alpha(colors.content, 0.6), width: 26, textAlign: 'right', tabularNumbers: true }}>{day.low}°</Text>
       <View style={{ width: trackWidth, height: 4, radius: 2, background: alpha(colors.content, 0.15) }}>
         <View
           style={{

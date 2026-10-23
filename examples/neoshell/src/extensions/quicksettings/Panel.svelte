@@ -477,7 +477,7 @@
     </Tooltip>
     <View style={{ flex: 1 }}></View>
     {#if batteryPercent >= 0}
-      <Text style={{ fontSize: 11, paddingX: 4, color: alpha(colors.content, 0.6) }}>{batteryLabel()}</Text>
+      <Text style={{ fontSize: 11, paddingX: 4, color: alpha(colors.content, 0.6), tabularNumbers: true }}>{batteryLabel()}</Text>
     {/if}
   </View>
 

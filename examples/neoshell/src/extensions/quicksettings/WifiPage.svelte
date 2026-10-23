@@ -321,6 +321,6 @@
 {#snippet detail(key: string, value: string)}
   <View style={{ direction: 'row', gap: 12 }}>
     <Text style={{ flex: 1, fontSize: 11, color: alpha(colors.content, 0.5) }}>{key}</Text>
-    <Text style={{ fontSize: 11, truncate: true, maxWidth: 200 }}>{value}</Text>
+    <Text style={{ fontSize: 11, truncate: true, maxWidth: 200, tabularNumbers: true }}>{value}</Text>
   </View>
 {/snippet}

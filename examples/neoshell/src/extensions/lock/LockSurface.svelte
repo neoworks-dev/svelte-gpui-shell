@@ -198,11 +198,11 @@
 {#snippet clock()}
   <View style={{ align: 'center', gap: 2 }}>
     <Text style={{ fontSize: 22, fontWeight: 500, color: alpha(colors.content, 0.9) }}>{shortDate(now)}</Text>
-    <Text style={{ fontSize: 108, fontWeight: 200, color: alpha(colors.content, 0.92) }}>{clockTime(now)}</Text>
+    <Text style={{ fontSize: 108, fontWeight: 200, color: alpha(colors.content, 0.92), tabularNumbers: true }}>{clockTime(now)}</Text>
     {#if batteryPercent >= 0}
       <View style={{ direction: 'row', align: 'center', gap: 6, color: alpha(colors.content, 0.75) }}>
         <Icon name={batteryIcon} size={16} />
-        <Text style={{ fontSize: 13 }}>{batteryPercent}%</Text>
+        <Text style={{ fontSize: 13, tabularNumbers: true }}>{batteryPercent}%</Text>
       </View>
     {/if}
   </View>

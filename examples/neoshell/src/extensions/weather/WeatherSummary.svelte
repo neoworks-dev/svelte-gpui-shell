@@ -20,6 +20,8 @@
 
   const showsRange = $derived(current.high !== NO_TEMPERATURE && current.low !== NO_TEMPERATURE)
   const icon = $derived(weatherIcon(current.code, current.isDay))
+
+  const weatherRangeStyle = { ...rangeStyle, tabularNumbers: true }
 </script>
 
 {#if stacked}
@@ -30,7 +32,7 @@
       <Icon name={icon} size={ICON_LARGE} />
       <Text style={conditionStyle}>{current.description}</Text>
       {#if showsRange}
-        <Text style={rangeStyle}>H:{current.high}° L:{current.low}°</Text>
+        <Text style={weatherRangeStyle}>H:{current.high}° L:{current.low}°</Text>
       {/if}
     </View>
   </View>
@@ -44,7 +46,7 @@
       <Icon name={icon} size={ICON_SMALL} />
       <Text style={conditionStyle}>{current.description}</Text>
       {#if showsRange}
-        <Text style={rangeStyle}>H:{current.high}° L:{current.low}°</Text>
+        <Text style={weatherRangeStyle}>H:{current.high}° L:{current.low}°</Text>
       {/if}
     </View>
   </View>

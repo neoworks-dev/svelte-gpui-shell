@@ -22,7 +22,7 @@ export const hintStyle: Style = { fontSize: 11, color: alpha(colors.content, 0.6
 
 export const placeStyle: Style = { fontSize: 13, fontWeight: 500, truncate: true }
 
-export const readingStyle: Style = { fontSize: 44, fontWeight: 300 }
+export const readingStyle: Style = { fontSize: 44, fontWeight: 300, tabularNumbers: true }
 
 export const conditionStyle: Style = { fontSize: 13, color: alpha(colors.content, 0.9), truncate: true }
 
@@ -30,8 +30,8 @@ export const rangeStyle: Style = { fontSize: 11, color: alpha(colors.content, 0.
 
 export const stripLabelStyle: Style = { fontSize: 11, color: alpha(colors.content, 0.6) }
 
-export const stripValueStyle: Style = { fontSize: 13 }
+export const stripValueStyle: Style = { fontSize: 13, tabularNumbers: true }
 
 export const dayLabelStyle: Style = { fontSize: 13, color: alpha(colors.content, 0.7) }
 
-export const dayHighStyle: Style = { fontSize: 13 }
+export const dayHighStyle: Style = { fontSize: 13, tabularNumbers: true }

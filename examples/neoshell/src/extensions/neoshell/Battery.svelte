@@ -40,7 +40,7 @@
 
 {#if percent >= 0}
   <View style={{ direction: 'row', align: 'center', gap: 6, color: alpha(colors.content, 0.8) }}>
-    <Text>{percent}%</Text>
+    <Text style={{ tabularNumbers: true }}>{percent}%</Text>
     <View
       style={{
         width: 22,

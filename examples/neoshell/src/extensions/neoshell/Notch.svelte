@@ -91,6 +91,12 @@
   const WINDOW_HEIGHT = 240
   const TOOLTIP_OFFSET = 4
   const SCRUB_TIME_WIDTH = 48
+  const scrubTimeStyle = {
+    width: SCRUB_TIME_WIDTH,
+    fontSize: 11,
+    color: alpha(colors.content, 0.5),
+    tabularNumbers: true,
+  }
 
   let { bus, args }: ViewProps = $props()
 
@@ -568,7 +574,7 @@
     <View style={{ width: 6, height: 6, radius: 3, background: toneColor(entry) }}></View>
     <Text style={{ flex: 1, minWidth: 0, fontWeight: 500, truncate: true }}>{entry.label}</Text>
     {#if entry.detail !== '' && !isExpanded}
-      <Text style={{ color: alpha(colors.content, 0.5) }}>{entry.detail}</Text>
+      <Text style={{ color: alpha(colors.content, 0.5), tabularNumbers: true }}>{entry.detail}</Text>
     {/if}
   </View>
 {/snippet}
@@ -604,7 +610,7 @@
 {#snippet scrubber()}
   <View style={{ gap: 12, paddingX: ISLAND_PADDING, paddingBottom: ISLAND_PADDING }}>
     <View style={{ direction: 'row', align: 'center', gap: 10 }}>
-      <Text style={{ width: SCRUB_TIME_WIDTH, fontSize: 11, color: alpha(colors.content, 0.5) }}>
+      <Text style={scrubTimeStyle}>
         {clockLabel(position)}
       </Text>
       <View
@@ -620,7 +626,7 @@
           }}
         ></View>
       </View>
-      <Text style={{ width: SCRUB_TIME_WIDTH, fontSize: 11, color: alpha(colors.content, 0.5) }}>
+      <Text style={scrubTimeStyle}>
         {remainingLabel(media, position)}
       </Text>
     </View>
