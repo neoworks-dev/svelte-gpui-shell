@@ -2,6 +2,7 @@ import type { Plugin } from '@neoworks/extension-system'
 import { requireService } from '../../lib/services.js'
 import type { ViewRegistry } from '../../host/plugins/views.js'
 import Topbar from './Topbar.svelte'
+import Notch from './Notch.svelte'
 import Clock from './Clock.svelte'
 import Battery from './Battery.svelte'
 
@@ -15,6 +16,7 @@ const plugin: Plugin.Object = {
   apply(context) {
     const ui = requireService<ViewRegistry>(context, 'ui')
     context.effect(() => ui.register('neoshell.topbar', Topbar))
+    context.effect(() => ui.register('neoshell.notch', Notch))
     context.effect(() => ui.register('neoshell.clock', Clock))
     context.effect(() => ui.register('neoshell.battery', Battery))
   },
