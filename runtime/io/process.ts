@@ -50,6 +50,8 @@ export interface ProcessOptions {
 }
 
 export interface RunOptions extends ProcessOptions {
+  /** How `stdout` comes back: decoded as UTF-8 text (the default), or as the bytes the program wrote. */
+  encoding?: "text" | "bytes";
   /** Sent to the program's standard input, which is closed after it. Without it, the program's input is closed at once. */
   stdin?: string | Uint8Array;
   /** Kills the program and rejects with `TimedOut` if it runs longer, in milliseconds. */
@@ -64,15 +66,21 @@ export interface ProcessExit {
   signal?: string;
 }
 
-export interface RunResult extends ProcessExit {
-  /** Everything the program wrote to standard output, as UTF-8. */
-  stdout: string;
+export interface RunResult<Output extends string | Uint8Array = string> extends ProcessExit {
+  /** Everything the program wrote to standard output: UTF-8 text, or its bytes with `encoding: "bytes"`. */
+  stdout: Output;
+  /** Standard error, always as UTF-8 text. */
   stderr: string;
 }
 
 export interface SpawnOptions extends ProcessOptions {
   /** Called for each line the program writes to standard output, without its line ending. */
   onStdout?(line: string): void;
+  /**
+   * Called with each chunk the program writes to standard output, as it arrives, instead of
+   * `onStdout`: the chunks are not split at line ends and may break a character in two.
+   */
+  onStdoutBytes?(chunk: Uint8Array): void;
   /** Called for each line the program writes to standard error. */
   onStderr?(line: string): void;
   /** Called once the program has exited and its output has been delivered. */
@@ -143,28 +151,34 @@ export function limitProcesses(limit: ProcessLimit): void {
   call("proc.limit", { allow: limit.allow }).catch((error) => console.error(error.message));
 }
 
+interface RunFunction {
+  (argv: readonly string[], options: RunOptions & { encoding: "bytes" }): Promise<RunResult<Uint8Array>>;
+  (argv: readonly string[], options?: RunOptions): Promise<RunResult>;
+}
+
 export const processes = {
   /**
    * Runs a program to its end. A program that exits with a failure status still resolves,
    * as a 404 does for `fetch`; only a program that cannot be started, or that times out, rejects.
    */
-  async run(argv: readonly string[], options: RunOptions = {}): Promise<RunResult> {
+  run: (async (argv: readonly string[], options: RunOptions = {}): Promise<RunResult<string | Uint8Array>> => {
     const args = { ...launchArguments(argv, options), timeout: options.timeout };
     const input = options.stdin === undefined ? undefined : inputBuffer(options.stdin);
     const reply = await call("proc.run", args, input);
     const output = new Uint8Array(reply.bytes ?? new ArrayBuffer(0));
     const { stdoutLength, ...exit } = reply.json;
     const decoder = new TextDecoder();
+    const stdout = output.subarray(0, stdoutLength);
     return {
       ...exit,
-      stdout: decoder.decode(output.subarray(0, stdoutLength)),
+      stdout: options.encoding === "bytes" ? stdout.slice() : decoder.decode(stdout),
       stderr: decoder.decode(output.subarray(stdoutLength)),
     };
-  },
+  }) as RunFunction,
 
   /** Starts a program and follows it. Output is delivered per line, as soon as the program writes it. */
   spawn(argv: readonly string[], options: SpawnOptions = {}): ProcessHandle {
-    const args = launchArguments(argv, options);
+    const args = { ...launchArguments(argv, options), binaryStdout: options.onStdoutBytes !== undefined };
     let settle: { resolve(exit: ProcessExit): void; reject(error: ProcessError): void };
     const exited = new Promise<ProcessExit>((resolve, reject) => {
       settle = { resolve, reject };
@@ -174,6 +188,10 @@ export const processes = {
     let inputOpen = true;
     const process = stream("proc.spawn", args, {
       event: (reply) => {
+        if (reply.json.type === "stdoutBytes") {
+          options.onStdoutBytes?.(new Uint8Array(reply.bytes ?? new ArrayBuffer(0)));
+          return;
+        }
         const handler = reply.json.type === "stderr" ? options.onStderr : options.onStdout;
         handler?.(reply.json.line);
       },

@@ -183,11 +183,15 @@ one. The first entry is a name looked up in `PATH`, or a path. Each call runs on
 
 | Function | Result |
 |---|---|
-| `run(argv, { stdin?, cwd?, env?, timeout? })` | `{ status, signal?, stdout, stderr }` once the program has exited. `stdin` is text or bytes, sent and then closed; without it the program's input is closed at once. Output is read as UTF-8. A program that exits with a failure status still resolves, as a 404 does for `fetch`. With `timeout` (ms), a program that runs longer is killed and the call rejects with `TimedOut`. |
-| `spawn(argv, { cwd?, env?, onStdout?, onStderr?, onExit?, onError? })` | A handle, at once. |
+| `run(argv, { stdin?, cwd?, env?, timeout?, encoding? })` | `{ status, signal?, stdout, stderr }` once the program has exited. With `encoding: "bytes"`, `stdout` is a `Uint8Array` of exactly what the program wrote, and not decoded text. `stdin` is text or bytes, sent and then closed; without it the program's input is closed at once. Output is read as UTF-8. A program that exits with a failure status still resolves, as a 404 does for `fetch`. With `timeout` (ms), a program that runs longer is killed and the call rejects with `TimedOut`. |
+| `spawn(argv, { cwd?, env?, onStdout?, onStdoutBytes?, onStderr?, onExit?, onError? })` | A handle, at once. |
 | `env()` | `Record<string, string>`: the host's environment, which programs inherit. |
 
 `env` in the options lays variables over the inherited ones, and `null` removes one.
+
+Binary output, such as a raw frame from a capture tool, is read with `run(argv, { encoding: "bytes" })`
+or, as it streams, with `onStdoutBytes(chunk)` in place of `onStdout`: the chunks are what the
+program wrote, not split at line ends. Standard error stays text.
 
 A handle from `spawn` has:
 - `onStdout(line)` and `onStderr(line)`, called for each line as the program writes it,

@@ -114,10 +114,11 @@ A theme is plain data: exported `Style` objects spread together, or combined wit
   `start(App, {}, { files: { allow: ["$data/my-app"] } })`. Dialog picks are always
   allowed. The `--allow-files` host flag narrows it further.
 - **`processes`** (from `@neoworks/svelte-gpui`) runs programs from an argv list, no shell:
-  - `run(argv, { stdin?, cwd?, env?, timeout? })` resolves `{ status, signal?, stdout, stderr }`
-    once the program exits; a failure status still resolves.
-  - `spawn(argv, { onStdout?, onStderr?, onExit?, onError? })` returns a handle at once, with
-    per-line callbacks, `write`, `closeStdin`, `kill(signal?)` and `exited`. Programs still
+  - `run(argv, { stdin?, cwd?, env?, timeout?, encoding? })` resolves `{ status, signal?, stdout, stderr }`
+    once the program exits; a failure status still resolves. `encoding: "bytes"` makes `stdout`
+    a `Uint8Array` of exactly what the program wrote (text otherwise).
+  - `spawn(argv, { onStdout?, onStdoutBytes?, onStderr?, onExit?, onError? })` returns a handle at once, with
+    per-line callbacks (`onStdoutBytes(chunk)` instead gives stdout as raw chunks), `write`, `closeStdin`, `kill(signal?)` and `exited`. Programs still
     running when the app quits or reloads are killed.
   - `env()` reads the host's environment. Errors are `ProcessError` (`code`).
   - Unlimited unless `start(App, {}, { process: { allow: ["nmcli", "/usr/bin/x"] } })`.

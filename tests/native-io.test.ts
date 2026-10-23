@@ -183,3 +183,34 @@ describe("unixSockets", () => {
     expect(sent[1]).toMatchObject({ op: "sock.reply", args: { request: 1, failed: true } });
   });
 });
+
+describe("binary process output", () => {
+  test("run with encoding bytes returns the bytes of standard output untouched", async () => {
+    const result = processes.run(["capture"], { encoding: "bytes" });
+    await flush();
+    answer(sent[0].call, "resolve", { status: 0, stdoutLength: 3 }, new Uint8Array([0xff, 0x00, 0x80, 0x65]));
+    const done = await result;
+    expect(done.stdout).toEqual(new Uint8Array([0xff, 0x00, 0x80]));
+    expect(done.stderr).toBe("e");
+  });
+
+  test("run without it still decodes text", async () => {
+    const result = processes.run(["echo"]);
+    await flush();
+    answer(sent[0].call, "resolve", { status: 0, stdoutLength: 2 }, new TextEncoder().encode("hi"));
+    expect((await result).stdout).toBe("hi");
+  });
+
+  test("spawn with onStdoutBytes asks the host for chunks and hands them over", async () => {
+    const chunks: number[][] = [];
+    processes.spawn(["capture"], { onStdoutBytes: (chunk) => chunks.push([...chunk]) });
+    expect(sent[0].args.binaryStdout).toBe(true);
+    answer(sent[0].call, "event", { type: "stdoutBytes" }, new Uint8Array([1, 2, 255]));
+    expect(chunks).toEqual([[1, 2, 255]]);
+  });
+
+  test("spawn without it keeps lines", () => {
+    processes.spawn(["echo"], { onStdout: () => {} });
+    expect(sent[0].args.binaryStdout).toBe(false);
+  });
+});
