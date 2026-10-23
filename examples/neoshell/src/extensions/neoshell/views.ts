@@ -6,6 +6,8 @@ import Notch from './Notch.svelte'
 import Dock from './Dock.svelte'
 import Clock from './Clock.svelte'
 import Battery from './Battery.svelte'
+import Desktop from './Desktop.svelte'
+import WidgetGallery from './WidgetGallery.svelte'
 
 // neoshell default views — the neoworks profile's surface set. Registration is
 // an effect, so a view type leaves the registry with the extension and the
@@ -21,6 +23,8 @@ const plugin: Plugin.Object = {
     context.effect(() => ui.register('neoshell.clock', Clock))
     context.effect(() => ui.register('neoshell.dock', Dock))
     context.effect(() => ui.register('neoshell.battery', Battery))
+    context.effect(() => ui.register('neoshell.desktop', Desktop))
+    context.effect(() => ui.register('neoshell.widgetgallery', WidgetGallery))
   },
 }
 

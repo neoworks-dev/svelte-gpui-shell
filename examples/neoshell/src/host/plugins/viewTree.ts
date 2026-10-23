@@ -139,7 +139,7 @@ const DEFAULT_TREE: TreeNode[] = [
     type: 'neoshell.widgetgallery',
     args: {
       layer: 'top',
-      anchors: ['bottom'],
+      anchors: ['bottom', 'left', 'right'],
       keyboard: 'ondemand',
       widgetHost: true,
     },

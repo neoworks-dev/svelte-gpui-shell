@@ -1,78 +1,27 @@
-// The shapes the gesture events in `events.ts` deliver. Svelte has no types
-// for them — they arrive as the `detail` of a synthetic event — so the views
-// that read a drag or a press unpack them through here rather than each
-// asserting its own.
+import type { PointerEvent } from '@neoworks/svelte-gpui/ui'
+import type { Point } from './freeform'
 
-export interface PressDetail {
-  x: number
-  y: number
-  button: number
-  count: number
-  // The Gdk.ModifierType mask held at the time of the event.
-  state: number
-  width: number
-  height: number
-}
+// What the desktop's pointer handling asks of an event: which button it was,
+// whether it extends a selection, and how far a held button has travelled.
 
-export interface DragDetail {
-  startX: number
-  startY: number
-  dx: number
-  dy: number
-  x: number
-  y: number
-  state: number
-  width: number
-  height: number
-}
+export const PRIMARY_BUTTON = 0
+export const SECONDARY_BUTTON = 2
 
-export const PRIMARY_BUTTON = 1
-export const SECONDARY_BUTTON = 3
-
-const CONTROL_MASK = 1 << 2
+export const DRAG_THRESHOLD_PX = 4
 
 // Whether the click extends a selection rather than replacing it.
-export function extendsSelection(detail: { state: number }): boolean {
-  return (detail.state & CONTROL_MASK) !== 0
+export function extendsSelection(event: PointerEvent): boolean {
+  return event.ctrl
 }
 
-export function pressOf(event: { detail: unknown }): PressDetail {
-  const detail = event.detail as Partial<PressDetail> | null
-  if (detail === null || detail === undefined) {
-    return { x: 0, y: 0, button: PRIMARY_BUTTON, count: 1, state: 0, width: 0, height: 0 }
-  }
-  return {
-    x: numberOr(detail.x, 0),
-    y: numberOr(detail.y, 0),
-    button: numberOr(detail.button, PRIMARY_BUTTON),
-    count: numberOr(detail.count, 1),
-    state: numberOr(detail.state, 0),
-    width: numberOr(detail.width, 0),
-    height: numberOr(detail.height, 0),
-  }
+export function windowPointOf(event: PointerEvent): Point {
+  return { x: event.windowX, y: event.windowY }
 }
 
-export function dragOf(event: { detail: unknown }): DragDetail {
-  const detail = event.detail as Partial<DragDetail> | null
-  if (detail === null || detail === undefined) {
-    return { startX: 0, startY: 0, dx: 0, dy: 0, x: 0, y: 0, state: 0, width: 0, height: 0 }
-  }
-  return {
-    startX: numberOr(detail.startX, 0),
-    startY: numberOr(detail.startY, 0),
-    dx: numberOr(detail.dx, 0),
-    dy: numberOr(detail.dy, 0),
-    x: numberOr(detail.x, 0),
-    y: numberOr(detail.y, 0),
-    state: numberOr(detail.state, 0),
-    width: numberOr(detail.width, 0),
-    height: numberOr(detail.height, 0),
-  }
+export function travelOf(start: Point, event: PointerEvent): Point {
+  return { x: event.windowX - start.x, y: event.windowY - start.y }
 }
 
-function numberOr(value: number | undefined, fallback: number): number {
-  if (typeof value !== 'number') {
-    return fallback
-  }
-  return value
+export function hasTravelled(travel: Point): boolean {
+  return Math.abs(travel.x) > DRAG_THRESHOLD_PX || Math.abs(travel.y) > DRAG_THRESHOLD_PX
 }
