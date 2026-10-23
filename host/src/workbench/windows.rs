@@ -58,6 +58,8 @@ pub(crate) struct Windows {
     pub app_id: Option<String>,
     /// The monitors as the app was last told, so it hears only changes.
     pub reported_monitors: Option<String>,
+    /// The session lock's state as the app was last told.
+    pub reported_lock: Option<super::session_lock::LockState>,
 }
 
 /// The attributes an open window follows: a layer surface's exclusive zone and keyboard
@@ -126,7 +128,7 @@ impl Workbench {
         });
     }
 
-    fn window_closed(&mut self, root: NodeId, cx: &mut Context<Self>) {
+    pub(super) fn window_closed(&mut self, root: NodeId, cx: &mut Context<Self>) {
         self.windows.closed.insert(root);
         self.forget_window(root);
         self.emit(root, "close", "{}".to_string(), cx);
@@ -359,7 +361,7 @@ pub(super) fn is_window(tree: &Tree, id: NodeId) -> bool {
 }
 
 /// The `g-window`s that are in the tree, rather than built and not yet inserted.
-fn mounted_windows(tree: &Tree) -> HashSet<NodeId> {
+pub(super) fn mounted_windows(tree: &Tree) -> HashSet<NodeId> {
     let mut found = HashSet::new();
     let mut pending = vec![ROOT];
     while let Some(id) = pending.pop() {
@@ -392,8 +394,9 @@ fn apply_changes(before: &HashMap<String, String>, now: &HashMap<String, String>
 
 /// How a `g-window` opens, from its attributes: `title`, `width`, `height`, `app-id` (the app's
 /// own unless it says), `monitor` (a display's name) and, for a layer surface, `layer` with
-/// `anchor`, `exclusive-zone`, `margin`, `keyboard` and `namespace`. `None` when it names a
-/// monitor that is not connected: it does not open elsewhere instead.
+/// `anchor`, `exclusive-zone`, `margin`, `keyboard` and `namespace`; `lock` makes it a session
+/// lock surface on its monitor. `None` when it names a monitor that is not connected: it does
+/// not open elsewhere instead.
 fn window_options(attributes: &HashMap<String, String>, app_id: Option<String>, cx: &mut App) -> Option<WindowOptions> {
     let number = |name: &str| attributes.get(name).and_then(|value| value.parse::<f32>().ok());
     let display = match attributes.get("monitor") {
@@ -407,6 +410,9 @@ fn window_options(attributes: &HashMap<String, String>, app_id: Option<String>, 
         }
         None => None,
     };
+    if attributes.contains_key("lock") {
+        return super::session_lock::lock_options(display.map(|display| display.id()));
+    }
     let layer = attributes.get("layer").and_then(|layer| layer_options(attributes, layer));
     // A layer surface sized 0 along an axis is stretched there by the compositor.
     let (default_width, default_height) = match layer {

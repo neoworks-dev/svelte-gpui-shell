@@ -221,6 +221,50 @@ the compositor and keeps every `Popover` behaviour: flipping, outside presses an
 
 `examples/shell` has the dock as a scene (`SCENE=dock`).
 
+## Locking the session
+
+A `Window` with `lock` is a lock surface (ext-session-lock) on its `monitor`. The session is locked
+while at least one lock window is mounted: the compositor then shows nothing but the lock
+surfaces and sends input only to them. Mount one per monitor, and unlock by unmounting all of them
+in the same update, which is what an unlock after a good password does:
+
+```svelte
+<script lang="ts">
+  import { monitors, sessionLock } from "@neoworks/svelte-gpui";
+  let locked = $state(false);
+</script>
+
+{#if locked}
+  {#each monitors.list as monitor (monitor.name)}
+    <Window lock monitor={monitor.name}>
+      <LockScreen onunlock={() => (locked = false)} />
+    </Window>
+  {/each}
+{/if}
+```
+
+The compositor sizes a lock surface and gives it the keyboard; `layer`, `anchor`, `width` and the
+rest are ignored, and a lock window without a `monitor` does not open. It is read when it opens.
+
+`sessionLock.state` says where the lock is, and is reactive:
+
+| State | Meaning |
+|---|---|
+| `"unlocked"` | No lock window is mounted. |
+| `"locking"` | Lock windows are mounted and the compositor has not confirmed the lock yet. |
+| `"locked"` | The compositor confirmed the lock. Only now is the session safe to leave. |
+| `"finished"` | Lock windows are mounted and none is left: the compositor refused or ended the lock (another locker holds it, or it was restored), or the host refused to open them. It returns to `"unlocked"` when the app unmounts them. |
+
+A monitor plugged in while locked needs a lock window of its own, which the `each` above gives
+it. Unmounting only some of the windows keeps the session locked.
+
+A broken locker traps the session, so the host opens lock windows only in a process started with
+`SVELTE_GPUI_ALLOW_SESSION_LOCK=1`. Without it a lock window does not open, a message says so,
+and the state goes to `"finished"`; `scripts/shot.sh` never sets it, so a test cannot lock.
+The Hyprland option `misc:allow_session_lock_restore = true` lets a new locker replace one that
+crashed. Draw the lock screen's content as an ordinary component (`examples/shell` has
+`LockSurface` and the scene `SCENE=lock`) and look at it in a normal window first.
+
 ## Windows that draw nothing
 
 A window with no children, or whose content has no size, still maps: the host draws it as a

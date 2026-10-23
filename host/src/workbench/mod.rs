@@ -15,6 +15,7 @@ mod reload;
 mod reports;
 mod script;
 mod scrolling;
+mod session_lock;
 mod windowing;
 mod windows;
 

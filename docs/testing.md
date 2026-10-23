@@ -107,6 +107,9 @@ wait for, so the script waits for a surface of the host among `hyprctl layers` i
 `Window`s name the output themselves, with `monitor`, since a window rule cannot place a
 layer surface.
 
+`scripts/shot.sh` never locks the session: the host opens a `Window` with `lock` only when `SVELTE_GPUI_ALLOW_SESSION_LOCK=1` is set, which the script leaves alone, and the app sees
+`sessionLock.state` go to `"finished"` instead.
+
 `HOST` runs another executable instead of `svelte-gpui`: an app's own Rust binary, or a
 packaged one. A `BUNDLE` of `-` passes no `--bundle` (and no size), for an app that
 brings its own:

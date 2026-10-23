@@ -8,6 +8,7 @@
   import Regions from "./Regions.svelte";
   import Empty from "./Empty.svelte";
   import Dock from "./Dock.svelte";
+  import Lock from "./Lock.svelte";
 
   const present = $derived(monitors.list.some((monitor) => monitor.name === __OUTPUT__));
 </script>
@@ -25,6 +26,8 @@
     <Dock monitor={__OUTPUT__} tall={true} />
   {:else if __SCENE__ === "dock-short"}
     <Dock monitor={__OUTPUT__} tall={false} />
+  {:else if __SCENE__ === "lock"}
+    <Lock monitor={__OUTPUT__} />
   {:else if __SCENE__ === "empty"}
     <Empty monitor={__OUTPUT__} />
   {/if}

@@ -452,6 +452,7 @@ opens while it is mounted and closes when it is removed (`docs/window.md`).
 | `margin` | `number` \| `[top, right, bottom, left]` | Space from the anchor edges. |
 | `keyboard` | `"none"` \| `"exclusive"` \| `"on-demand"` | Whether a layer surface takes the keyboard. Follows changes. |
 | `namespace` | `string` | The name compositor rules match a layer surface by. |
+| `lock` | `boolean` | A session lock surface on its `monitor`, which it needs. The session is locked while any is mounted (`docs/window.md#locking-the-session`). Read when it opens. |
 | `onclose` | `() => void` | The user or the compositor closed it. It stays closed until it is removed and mounted again. |
 
 ## Popover

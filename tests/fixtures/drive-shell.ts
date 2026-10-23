@@ -36,4 +36,16 @@ globals.__page.setMarked(true);
 globals.__settle();
 log.marked = sent();
 
+globals.__page.setLocking(true);
+globals.__settle();
+log.locking = sent();
+
+globals.__sessionLock("locked");
+log.locked = sent();
+
+globals.__page.setLocking(false);
+globals.__settle();
+globals.__sessionLock("unlocked");
+log.unlocked = sent();
+
 process.stdout.write(`\n@@${JSON.stringify(log)}\n`);

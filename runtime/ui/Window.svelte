@@ -41,6 +41,13 @@
     keyboard?: "none" | "exclusive" | "on-demand";
     /** The name compositor rules match a layer surface by (Hyprland's `layerrule`). */
     namespace?: string;
+    /**
+     * Makes it a session lock surface on its `monitor`, which every lock window needs: the session
+     * is locked while any of them is mounted, and unmounting the last one unlocks it. The compositor
+     * sizes it and gives it the keyboard, and `layer` and what goes with it are ignored. Read when it
+     * opens; see `sessionLock` for where the lock is.
+     */
+    lock?: boolean;
     /** The user or the compositor closed it. It stays closed until it is removed and mounted again. */
     onclose?: () => void;
     children?: Snippet;
@@ -61,6 +68,7 @@
     margin: typeof props.margin === "number" ? props.margin : props.margin?.join(" "),
     keyboard: props.keyboard,
     namespace: props.namespace,
+    lock: props.lock ? "" : undefined,
     onclose: listener(props.onclose, () => undefined),
   });
 </script>
