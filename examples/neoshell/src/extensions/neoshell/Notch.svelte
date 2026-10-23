@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Tween } from 'svelte/motion'
-  import { Button, Icon, Image, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Image, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import type { Size, Style } from '@neoworks/svelte-gpui/ui'
   import { subscribeTo } from '../../lib/bus'
   import { cubicBezier } from '../../lib/easing'
@@ -22,10 +22,8 @@
   // Hovering only nudges the island a few pixels wider, to say it is
   // clickable; a click is what opens it.
   //
-  // The layer surface is the island: it is resized as the island opens, since
-  // an input region that follows the island is not available.
-  // TODO(host: input regions) keep one window the size of the open island and
-  // restrict its input to the island's current box.
+  // The layer surface is large enough for the open island, its overshoot and
+  // the label tooltip; only the island's own box takes the pointer.
 
   interface IslandEntry {
     id: string
@@ -89,6 +87,9 @@
   }
 
   const ISLAND_PADDING = 16
+  const WINDOW_WIDTH = 460
+  const WINDOW_HEIGHT = 240
+  const TOOLTIP_OFFSET = 4
   const SCRUB_TIME_WIDTH = 48
 
   let { bus, args }: ViewProps = $props()
@@ -447,6 +448,13 @@
     return alpha(colors.content, 0.85)
   }
 
+  function tooltipText(entry: IslandEntry | null): string {
+    if (entry === null) {
+      return ''
+    }
+    return entry.label
+  }
+
   function progressWidth(entry: IslandEntry): Size {
     const clamped = Math.min(Math.max(entry.progress, 0), 1)
     return `${clamped * 100}%`
@@ -478,71 +486,79 @@
 
 <Surface
   {args}
-  width={islandWidth + 2 * FILLET_WIDTH}
-  height={islandHeight}
-  style={{ background: windowBackground, direction: 'row', align: 'start' }}
+  width={WINDOW_WIDTH}
+  height={WINDOW_HEIGHT}
+  style={{ background: windowBackground, direction: 'row', justify: 'center', align: 'start' }}
 >
   <Fillet side="left" />
 
+  <Tooltip
+    text={tooltipText(current)}
+    side="bottom"
+    offset={TOOLTIP_OFFSET}
+    disabled={isExpanded || current === null}
+  >
+
   <!-- The content keeps its natural size at the top edge throughout and the
        growing island wipes it into view. -->
-  <View
-    style={{
-      width: islandWidth,
-      height: islandHeight,
-      overflow: 'hidden',
-      background: colors.canvas,
-      color: colors.content,
-      fontSize: 12,
-      radius: [0, 0, ISLAND_RADIUS, ISLAND_RADIUS],
-    }}
-    onhover={(isHovered) => (hovered = isHovered)}
-  >
-    {#if current !== null}
-      <!-- TODO(host: popups) the island header's tooltip with the full label. -->
-      <Button
-        style={{ ...headerStyle(mode), align: 'center', color: colors.content }}
-        onpress={() => (opened = !opened)}
-      >
-        {#if isMedia}
-          {@render mediaHeader(current, mode === 'expandedMedia')}
-        {:else}
-          {@render plainHeader(current)}
-        {/if}
-      </Button>
-    {/if}
+    <View
+      input
+      style={{
+        width: islandWidth,
+        height: islandHeight,
+        overflow: 'hidden',
+        background: colors.canvas,
+        color: colors.content,
+        fontSize: 12,
+        radius: [0, 0, ISLAND_RADIUS, ISLAND_RADIUS],
+      }}
+      onhover={(isHovered) => (hovered = isHovered)}
+    >
+      {#if current !== null}
+        <Button
+          style={{ ...headerStyle(mode), align: 'center', color: colors.content }}
+          onpress={() => (opened = !opened)}
+        >
+          {#if isMedia}
+            {@render mediaHeader(current, mode === 'expandedMedia')}
+          {:else}
+            {@render plainHeader(current)}
+          {/if}
+        </Button>
+      {/if}
 
-    {#if mode === 'expandedMedia'}
-      {@render scrubber()}
-    {/if}
-    {#if mode === 'expanded' && current !== null}
-      {@render expandedDetail(current)}
-    {/if}
+      {#if mode === 'expandedMedia'}
+        {@render scrubber()}
+      {/if}
+      {#if mode === 'expanded' && current !== null}
+        {@render expandedDetail(current)}
+      {/if}
 
-    {#if current !== null && current.progress >= 0 && !isExpanded}
-      <View
-        style={{
-          position: 'absolute',
-          left: 16,
-          right: 16,
-          bottom: 6,
-          height: 3,
-          radius: 2,
-          background: alpha(colors.content, 0.15),
-        }}
-      >
+      {#if current !== null && current.progress >= 0 && !isExpanded}
         <View
           style={{
-            width: progressWidth(current),
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            bottom: 6,
             height: 3,
             radius: 2,
-            background: toneColor(current),
-            transition: 200,
+            background: alpha(colors.content, 0.15),
           }}
-        ></View>
-      </View>
-    {/if}
-  </View>
+        >
+          <View
+            style={{
+              width: progressWidth(current),
+              height: 3,
+              radius: 2,
+              background: toneColor(current),
+              transition: 200,
+            }}
+          ></View>
+        </View>
+      {/if}
+    </View>
+  </Tooltip>
 
   <Fillet side="right" />
 </Surface>
