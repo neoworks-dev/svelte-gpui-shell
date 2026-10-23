@@ -400,6 +400,7 @@ impl<'a> Painter<'a> {
         };
         let mut computed = (*self.computed(id)).clone();
         if computed.style.hidden == Some(true) {
+            self.forget_bounds(id);
             return None;
         }
         if primitive == Primitive::Window {
@@ -441,10 +442,23 @@ impl<'a> Painter<'a> {
                 element.children(self.children(id, &inherited, row, cx))
             }
         };
-        if node.observed() || listens_for_pointer(node) || listens_for_drag(node) {
+        if node.observed() || listens_for_pointer(node) || listens_for_drag(node) || is_input_region(node) {
             element = element.child(self.measure(id));
         }
         Some(self.interactive(element, id, node, primitive, &computed, eased, cx))
+    }
+
+    /// Drops where an element and everything inside it last came out, as it is no longer drawn.
+    /// What stayed would be taken for a place they still have, such as in an input region.
+    fn forget_bounds(&self, id: NodeId) {
+        let mut placed = self.interaction.bounds.borrow_mut();
+        let mut pending = vec![id];
+        while let Some(next) = pending.pop() {
+            placed.remove(&next);
+            if let Some(node) = self.tree.nodes.get(&next) {
+                pending.extend(node.children.iter().copied());
+            }
+        }
     }
 
     /// An invisible layer that records where its parent came out.
@@ -469,6 +483,11 @@ impl<'a> Painter<'a> {
         .size_full()
         .into_any_element()
     }
+}
+
+/// Whether the element is marked `input`, so that its place is part of its window's input region.
+fn is_input_region(node: &Node) -> bool {
+    node.attributes.contains_key("input")
 }
 
 /// Whether a box is more than a screen away from the window.

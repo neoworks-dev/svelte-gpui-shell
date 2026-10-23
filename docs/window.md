@@ -162,6 +162,38 @@ stretches it along an axis whose `width` or `height` is 0 or left out:
 that is not connected does not open at all, rather than on whichever monitor the compositor
 would choose. `examples/layer-shell` has a bar and a card on one monitor.
 
+## Input regions
+
+A layer surface takes the pointer over its whole area. A shell often has a window the size of the
+output with only a panel in it, and everything else has to reach the windows below. Mark the
+parts that take the pointer with `input` on a `View`:
+
+```svelte
+<Window monitor="DP-2" layer="top" anchor={["top", "bottom", "left", "right"]}>
+  <View input style={{ alignSelf: "end", margin: 20, width: 300, height: 200 }}>…</View>
+</Window>
+```
+
+- A window with no `input` view takes the pointer everywhere, as before.
+- With some, the window takes it only inside those views' boxes. Touch input follows the same region.
+- A window whose `input` views have no area is click-through as a whole. A tray that is closed
+  keeps a zero-size `<View input style={{ width: 0, height: 0 }} />`, so the surface stays
+  click-through while the tray is shut and the window is not one that takes the pointer
+  everywhere again.
+- The region follows the views as they move, grow or come and go, and is read from where
+  they were laid out, so a view with `display: "none"` or one that an ancestor hides adds
+  nothing. A `View` inside a nested `Window` belongs to that one.
+
+To dismiss a tray when the user clicks away, put a near-transparent `input` view that fills
+the window under the panel: its press is the click-away.
+
+`examples/shell` has a scene for this (`SCENE=regions`).
+
+## Windows that draw nothing
+
+A window with no children, or whose content has no size, still maps: the host draws it as a
+fully transparent buffer, so the compositor does not wait on it or send it a new size again.
+
 ## Monitors
 
 `monitors.list` from `@neoworks/svelte-gpui` is the connected monitors, each with its `name`

@@ -33,6 +33,7 @@ the full set of pointer events.
 | `hover`, `active`, `focus` | `Style` | State styles. `active` applies while a button is held on it. |
 | `focusable` | `boolean` | Takes keyboard focus when pressed, which lets it receive `onkey`. |
 | `keepFocus` | `boolean` | A press on it, or on anything inside it, does not move focus: the field that has it keeps it, and nothing inside takes it. See [Events](events.md#keyboard-and-focus). |
+| `input` | `boolean` | In a layer surface: its box is part of the window's input region, and the rest of the window lets the pointer through. See [Input regions](window.md#input-regions). |
 | `onpress` | `(e: PointerEvent) => void` | A click: a button pressed and released on it. |
 | `onhover` | `(hovered: boolean) => void` | The pointer entered (`true`) or left (`false`). |
 | `ondown` | `(e: PointerEvent) => void` | A button went down on it. This captures the pointer: `onmove` and `onup` follow it anywhere until release. |

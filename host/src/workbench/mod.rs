@@ -6,6 +6,7 @@ mod editing;
 mod elements;
 mod file_drop;
 mod ime;
+mod input_region;
 mod io;
 mod keys;
 mod overlay;

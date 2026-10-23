@@ -39,7 +39,7 @@ are the reference. The app in `examples/demo` uses every feature.
 
 | Component | Key props | Methods |
 |---|---|---|
-| `View` | `style hover active focus focusable keepFocus onpress onhover ondown buttons onmove onup onwheel onlayout onresize onkey onfocus onblur ondragenter ondragover ondragleave ondrop` | `focus()`, `blur()` |
+| `View` | `style hover active focus focusable keepFocus input onpress onhover ondown buttons onmove onup onwheel onlayout onresize onkey onfocus onblur ondragenter ondragover ondragleave ondrop` | `focus()`, `blur()` |
 | `Text` | `style pre onlayout`; nest `Text` for runs in one paragraph | |
 | `Button` | `style hover active focus disabled disabledStyle onpress onhover onkey onfocus onblur` | `focus()`, `blur()` |
 | `Input` | `bind:value placeholder multiline rows secure numeric maxLength disabled readonly style hover focus oninput onsubmit oncommit onselect onkey` | `focus()`, `blur()`, `select(start?, end?)`, `getSelection()` gives `{ start, end, firstRow, lastRow }` |
@@ -236,6 +236,7 @@ with `scripts/shot.sh`, so an error shows up in the screenshot.
 - **Open it:** `start(App, {}, { window: { title, width, height, minWidth, minHeight } })`.
   `window: false` opens none, for an app that draws only in `Window`s.
 - **More windows:** `<Window>` opens one while mounted; state is shared, it is one app.
+- **Input regions:** in a layer surface, `<View input>` marks the parts that take the pointer; a window with any such view is click-through elsewhere, and zero-size ones make it click-through as a whole. A window with none takes input everywhere.
 - **Shells:** `<Window layer="top" anchor={["top","left","right"]} height={32} exclusiveZone={32} monitor={m.name}>` per `monitors.list` entry (reactive, from `@neoworks/svelte-gpui`). A `Window` naming a missing monitor does not open.
   `--width` and `--height` override the size.
 - **Read it,** reactively: `window.size` (`{ width, height }`), `scale`, `focused`,

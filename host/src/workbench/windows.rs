@@ -40,6 +40,8 @@ pub(crate) struct OpenWindow {
     pub handle: WindowHandle<WindowView>,
     /// The attributes that can change an open window, as it was last given them.
     pub applied: HashMap<String, String>,
+    /// The input region the window was last given: `None` while the whole surface takes input.
+    pub input_region: Option<Vec<super::input_region::Rectangle>>,
 }
 
 /// The windows' bookkeeping, apart from the rest of the workbench.
@@ -95,7 +97,12 @@ impl Workbench {
         this.update(cx, |this, _| {
             this.windows.opening.remove(&root);
             let applied = this.svelte.tree.borrow().nodes.get(&root).map(|node| live_attributes(&node.attributes));
-            this.windows.open.push(OpenWindow { root, handle, applied: applied.unwrap_or_default() });
+            this.windows.open.push(OpenWindow {
+                root,
+                handle,
+                applied: applied.unwrap_or_default(),
+                input_region: None,
+            });
         });
         Some(handle)
     }
@@ -347,7 +354,7 @@ pub(super) fn window_root(tree: &Tree, id: NodeId) -> Option<NodeId> {
     None
 }
 
-fn is_window(tree: &Tree, id: NodeId) -> bool {
+pub(super) fn is_window(tree: &Tree, id: NodeId) -> bool {
     matches!(tree.nodes.get(&id).map(|node| &node.kind), Some(Kind::Element { tag }) if tag == "g-window")
 }
 
