@@ -25,7 +25,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::{Value, json};
 
 use super::{MainJob, Sink};
-use limit::{Limit, canonical};
+use limit::Limit;
+pub use limit::canonical;
 pub use paths::Directories;
 
 /// Why an operation failed: a short code the app can test, and a message for people.

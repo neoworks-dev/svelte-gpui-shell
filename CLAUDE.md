@@ -38,7 +38,7 @@ The path is relative, so worktrees need `.worktrees/gpui` as a symlink to `../..
 - `bun run typecheck` runs tsc and svelte-check.
 - Network and files go through one path: `host.io(op, call, args, bytes)` from
   `runtime/io/channel.ts` to `host/src/io/`, where each area (`fetch.rs`,
-  `websocket.rs`, `files.rs`) runs work on threads and answers through a `Sink`.
+  `websocket.rs`, `files.rs`, `process.rs`, `socket.rs`) runs work on threads and answers through a `Sink`.
   Results wake the window at once (`Workbench::deliver`); never poll for them. Work
   that needs GPUI (file dialogs) is a `MainJob`, run in `workbench/io.rs`.
 - User docs live in `docs/`, and the agent skill in `.claude/skills/svelte-gpui/`.

@@ -73,6 +73,8 @@ export interface FilePaths {
   data: string;
   cache: string;
   temp: string;
+  /** Where the session keeps sockets (`XDG_RUNTIME_DIR`); the temporary directory where there is none. */
+  runtime: string;
   /** The directory of the running bundle. */
   bundle: string;
   /** The directory the process was started in. */
@@ -98,7 +100,7 @@ export interface PickSavePathOptions {
 /**
  * The limit an app puts on its own file access. Each entry grants itself and everything
  * below it. `~` and the placeholders `$home`, `$config`, `$data`, `$cache`, `$temp`,
- * `$bundle` and `$cwd` at the start of an entry stand for the directories of `files.paths()`.
+ * `$runtime`, `$bundle` and `$cwd` at the start of an entry stand for the directories of `files.paths()`.
  * An empty list allows nothing but what the user picks in a dialog.
  */
 export interface FilesLimit {

@@ -12,6 +12,9 @@ pub struct Directories {
     pub data: PathBuf,
     pub cache: PathBuf,
     pub temp: PathBuf,
+    /// Where the session keeps sockets and the like (`XDG_RUNTIME_DIR`); the temporary
+    /// directory where there is none.
+    pub runtime: PathBuf,
     /// The directory of the running bundle (the `--bundle` flag).
     pub bundle: PathBuf,
     /// The process's current directory when it started; relative paths resolve against it.
@@ -28,7 +31,11 @@ impl Directories {
             .and_then(|path| path.parent().map(Path::to_path_buf))
             .unwrap_or_else(|| cwd.clone());
         let (config, data, cache) = application_directories(&home);
-        Directories { home, config, data, cache, temp: std::env::temp_dir(), bundle, cwd }
+        let runtime = match std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from) {
+            Some(path) if path.is_absolute() => path,
+            _ => std::env::temp_dir(),
+        };
+        Directories { home, config, data, cache, temp: std::env::temp_dir(), runtime, bundle, cwd }
     }
 
     /// What `files.paths()` answers with.
@@ -39,6 +46,7 @@ impl Directories {
             "data": text(&self.data),
             "cache": text(&self.cache),
             "temp": text(&self.temp),
+            "runtime": text(&self.runtime),
             "bundle": text(&self.bundle),
             "cwd": text(&self.cwd),
         })
@@ -52,6 +60,7 @@ impl Directories {
             "data" => &self.data,
             "cache" => &self.cache,
             "temp" => &self.temp,
+            "runtime" => &self.runtime,
             "bundle" => &self.bundle,
             "cwd" => &self.cwd,
             _ => return None,

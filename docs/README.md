@@ -32,8 +32,8 @@ React Native works. There is no webview and no DOM.
    springs and animation frames.
 6. [Patterns](patterns.md): building your own controls, long lists and trees, popovers, menus
    and tooltips, dragging, drawing, shortcuts and layout recipes.
-7. [Network and files](io.md): `fetch`, `WebSocket`, the `files` API, and limiting
-   file access.
+7. [Network and files](io.md): `fetch`, `WebSocket`, the `files` API, running programs
+   (`processes`), unix sockets (`unixSockets`), and limiting what an app may reach.
 8. [The window](window.md): its title, size and minimum size, what the app can read
    about it, and asking before it closes.
 9. [Calling Rust](rust.md): commands your own crate registers, `invoke`, events
