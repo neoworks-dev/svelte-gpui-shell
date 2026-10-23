@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Tween } from 'svelte/motion'
-  import { Button, Icon, Image, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Image, Popover, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import type { PointerEvent } from '@neoworks/svelte-gpui/ui'
   import { subscribeTo } from '../../lib/bus'
   import { cubicBezier } from '../../lib/easing'
@@ -28,11 +28,9 @@
   // The dock: a centred floating panel of launchers, hidden below the screen
   // edge until the pointer enters the hot strip along it.
   //
-  // The surface is only as tall as what is showing: the strip alone while the
-  // dock is hidden, so the rest of the edge stays click-through, the panel's
-  // height while it is open, and taller still while a window-preview panel is
-  // up. TODO(host: input regions) keep one window and mark the strip and the
-  // revealed panel as its input region.
+  // The surface is always tall enough for the window previews, which rise
+  // above the panel inside it. Only the hot strip, the revealed panel and an
+  // open preview take the pointer; the rest of the surface is click-through.
   //
   //   dock:reveal  {open?}  raise the dock, or lower it with open: false
   //
@@ -52,11 +50,6 @@
   const ICON_PIXELS = 44
   const TILE_WIDTH = 52
   const HOT_STRIP_PIXELS = 4
-  // GPUI hovers whatever lies under the last pointer position it knows, which is
-  // the surface's top-left corner until a pointer has been over it. A hidden dock
-  // is only the strip, so a dead row above it keeps that phantom pointer off it:
-  // otherwise the dock would reveal itself, collapse, and reveal itself again.
-  const DEAD_ROW_PIXELS = 1
   const DEFAULT_HEIGHT = 96
   const SLIDE_MS = 200
   const SLIDE_DISTANCE = 100
@@ -64,8 +57,6 @@
   const PREVIEW_HEIGHT = 170
   const PREVIEW_AREA = 250
   const PREVIEW_GAP = 8
-  const PREVIEW_CHROME = 10
-  const EDGE_MARGIN = 8
   // How long the pointer rests on a tile before its windows are captured, so
   // a sweep across the dock does not capture every running app on the way.
   const PRECAPTURE_DELAY_MS = 120
@@ -87,8 +78,6 @@
   // them already in hand, and refreshed once more when it opens.
   let previewIndex = $state(-1)
   let previews = $state<Record<string, Preview>>({})
-  let tileCenters = $state<Record<number, number>>({})
-  let surfaceWidth = $state(0)
   let precaptureTimer: ReturnType<typeof setTimeout> | null = null
 
   // Either half of the hot area keeps the dock open, so travelling from the
@@ -109,8 +98,7 @@
   const entries = $derived(dockEntries(catalog, pinned, openWindows))
   const openKeys = $derived(new Set(openClasses.map((wmClass) => wmClass.toLowerCase())))
   const expanded = $derived(revealed || slide.current > 0.001)
-  const windowHeight = $derived(surfaceHeightOf(expanded, previewIndex >= 0))
-  const previewApp = $derived(entries[previewIndex])
+  const windowHeight = $derived(dockHeight + PREVIEW_AREA)
 
   $effect(() => {
     void slide.set(Number(revealed))
@@ -150,16 +138,6 @@
       return height
     }
     return DEFAULT_HEIGHT
-  }
-
-  function surfaceHeightOf(isExpanded: boolean, previewing: boolean): number {
-    if (!isExpanded) {
-      return HOT_STRIP_PIXELS + DEAD_ROW_PIXELS
-    }
-    if (previewing) {
-      return dockHeight + PREVIEW_AREA
-    }
-    return dockHeight
   }
 
   // The apps extension may not have mounted yet, in which case the call times
@@ -342,8 +320,8 @@
     return null
   }
 
-  function dismissPreviews(): void {
-    if (previewIndex < 0) {
+  function dismissPreviews(index: number): void {
+    if (previewIndex !== index) {
       return
     }
     previewIndex = -1
@@ -430,13 +408,6 @@
     collapseTimer = null
   }
 
-  function stripOffset(isExpanded: boolean): number {
-    if (isExpanded) {
-      return 0
-    }
-    return DEAD_ROW_PIXELS
-  }
-
   function isHopping(app: DockApp): boolean {
     return launching.has(app.id)
   }
@@ -446,21 +417,6 @@
       return alpha(colors.content, 0.8)
     }
     return 'transparent'
-  }
-
-  // The preview panel sits over the tile it belongs to, kept inside the surface.
-  function previewLeft(windowCount: number): number {
-    const width = windowCount * PREVIEW_WIDTH + (windowCount - 1) * PREVIEW_GAP + PREVIEW_CHROME
-    const centered = centerOf(previewIndex) - width / 2
-    return Math.max(EDGE_MARGIN, Math.min(centered, surfaceWidth - width - EDGE_MARGIN))
-  }
-
-  function centerOf(index: number): number {
-    const center = tileCenters[index]
-    if (center === undefined) {
-      return 0
-    }
-    return center
   }
 
   function onTilePress(app: DockApp, index: number, event: PointerEvent): void {
@@ -474,41 +430,21 @@
 <Surface
   {args}
   height={windowHeight}
-  style={{ background: windowBackground }}
+  style={{ background: windowBackground, justify: 'end' }}
 >
-  {#if expanded}
-    <!-- The space above the panel is where the previews open; a press on it,
-         outside the previews, puts them away. -->
+  {#if previewIndex >= 0}
+    <!-- Catches the press that puts the previews away, which would otherwise
+         reach whatever is below the surface. -->
     <View
-      style={{ flex: 1 }}
-      onresize={(layout) => (surfaceWidth = layout.width)}
-      ondown={dismissPreviews}
-    >
-      {#if previewApp !== undefined}
-        {@const windows = windowsOfApp(openWindows, previewApp)}
-        <View
-          style={{
-            position: 'absolute',
-            left: previewLeft(windows.length),
-            bottom: 0,
-            direction: 'row',
-            gap: PREVIEW_GAP,
-            padding: 4,
-            background: alpha(colors.elevated, 0.4),
-            borderWidth: 1,
-            borderColor: alpha(colors.content, 0.1),
-            radius: 16,
-          }}
-          onhover={hoverPanel}
-        >
-          {#each windows as window (window.address)}
-            {@render previewCard(window, previewApp)}
-          {/each}
-        </View>
-      {/if}
-    </View>
+      input
+      style={{ position: 'absolute', inset: 0 }}
+      ondown={() => dismissPreviews(previewIndex)}
+    ></View>
+  {/if}
 
+  {#if expanded}
     <View
+      input
       style={{
         alignSelf: 'center',
         paddingBottom: 8,
@@ -529,21 +465,7 @@
         }}
       >
         {#each entries as app, index (app.id)}
-          {@const magnification = magnificationOf(index, hoveredIndex)}
-          <!-- TODO(host: popups) the tile's app-name tooltip. -->
-          <View
-            style={{ width: TILE_WIDTH, paddingBottom: 6, align: 'center' }}
-            onhover={(isOver) => hoverTile(index, isOver)}
-            onpress={(event) => onTilePress(app, index, event)}
-            buttons={['right']}
-            ondown={(event) => onTilePress(app, index, event)}
-            onlayout={(layout) => (tileCenters[index] = layout.x + layout.width / 2)}
-          >
-            <View style={{ width: ICON_PIXELS, height: ICON_PIXELS }}>
-              <DockIcon icon={app.icon} size={ICON_PIXELS} {magnification} hopping={isHopping(app)} />
-            </View>
-            <View style={{ width: 4, height: 4, radius: 2, marginTop: 0, background: dotColor(app) }}></View>
-          </View>
+          {@render tile(app, index)}
         {/each}
       </View>
     </View>
@@ -552,10 +474,53 @@
   <!-- The hot strip is the only part of a hidden dock the pointer reaches. It
        has to paint, or a surface that draws nothing is never mapped. -->
   <View
-    style={{ height: HOT_STRIP_PIXELS, marginTop: stripOffset(expanded), background: windowBackground }}
+    input
+    style={{ height: HOT_STRIP_PIXELS, background: windowBackground }}
     onhover={hoverStrip}
   ></View>
 </Surface>
+
+{#snippet tile(app: DockApp, index: number)}
+  {@const magnification = magnificationOf(index, hoveredIndex)}
+  {@const windows = windowsOfApp(openWindows, app)}
+  <Popover
+    open={previewIndex === index}
+    side="top"
+    align="center"
+    input
+    focusPanel={false}
+    style={{
+      padding: 4,
+      background: alpha(colors.elevated, 0.4),
+      borderWidth: 1,
+      borderColor: alpha(colors.content, 0.1),
+      radius: 16,
+    }}
+    onclose={() => dismissPreviews(index)}
+  >
+    {#snippet trigger()}
+      <Tooltip text={app.name} side="top" disabled={previewIndex >= 0}>
+        <View
+          style={{ width: TILE_WIDTH, paddingBottom: 6, align: 'center' }}
+          onhover={(isOver) => hoverTile(index, isOver)}
+          onpress={(event) => onTilePress(app, index, event)}
+          buttons={['right']}
+          ondown={(event) => onTilePress(app, index, event)}
+        >
+          <View style={{ width: ICON_PIXELS, height: ICON_PIXELS }}>
+            <DockIcon icon={app.icon} size={ICON_PIXELS} {magnification} hopping={isHopping(app)} />
+          </View>
+          <View style={{ width: 4, height: 4, radius: 2, marginTop: 0, background: dotColor(app) }}></View>
+        </View>
+      </Tooltip>
+    {/snippet}
+    <View style={{ direction: 'row', gap: PREVIEW_GAP }} onhover={hoverPanel}>
+      {#each windows as window (window.address)}
+        {@render previewCard(window, app)}
+      {/each}
+    </View>
+  </Popover>
+{/snippet}
 
 {#snippet previewCard(window: OpenWindow, app: DockApp)}
   <Button
