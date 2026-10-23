@@ -7,6 +7,14 @@
   import Panel from './extensions/quicksettings/Panel.svelte'
   import WifiPage from './extensions/quicksettings/WifiPage.svelte'
   import Weather from './extensions/weather/Weather.svelte'
+  import Battery from './extensions/neoshell/Battery.svelte'
+  import Clock from './extensions/neoshell/Clock.svelte'
+  import Desktop from './extensions/neoshell/Desktop.svelte'
+  import Dock from './extensions/neoshell/Dock.svelte'
+  import Notch from './extensions/neoshell/Notch.svelte'
+  import Topbar from './extensions/neoshell/Topbar.svelte'
+  import Wallpaper from './extensions/neoshell/Wallpaper.svelte'
+  import WidgetGallery from './extensions/neoshell/WidgetGallery.svelte'
   import { MAX_UNIT_PX, sizePx, spanOf } from './extensions/neoshell/freeform'
   import { PANEL_WIDTH, panelStyle } from './extensions/quicksettings/look'
   import type { BluetoothState, NetworkState } from './extensions/quicksettings/types'
@@ -68,6 +76,16 @@
   // built rather than only whichever one a default would have picked.
   const CARD_SIZES = ['small', 'medium', 'large']
 
+  const SHELL_WIDTH = 900
+  const SHELL_HEIGHT = 520
+  const BAR_ARGS = { height: 30, centerGap: 320 }
+  const DESKTOP_ARGS = {
+    widgets: [
+      { id: 'weather', type: 'weather.card', size: 'small' },
+      { id: 'airquality', type: 'airquality.card', size: 'small' },
+    ],
+  }
+
   function boxFor(size: string) {
     const box = sizePx(MAX_UNIT_PX, spanOf(size))
     return { size, width: box.width, height: box.height }
@@ -76,6 +94,26 @@
 
 <Scroll style={{ flex: 1, background: '#101012' }}>
   <View style={{ direction: 'row', wrap: true, gap: 16, padding: 16, align: 'start' }}>
+    <View style={{ width: SHELL_WIDTH, height: SHELL_HEIGHT, shrink: 0, background: '#101012' }}>
+      <Wallpaper {bus} {registry} args={{}} id="smoke.wallpaper" />
+      <Desktop {bus} {registry} args={DESKTOP_ARGS} id="smoke.desktop" />
+      <View style={{ position: 'absolute', inset: 0 }}>
+        <Topbar {bus} {registry} args={BAR_ARGS} id="smoke.bar">
+          <Battery {bus} {registry} args={{}} id="smoke.battery" />
+          <Clock {bus} {registry} args={{}} id="smoke.clock" />
+        </Topbar>
+      </View>
+      <View style={{ position: 'absolute', top: 0, left: 0, right: 0, align: 'center' }}>
+        <Notch {bus} {registry} args={{}} id="smoke.notch" />
+      </View>
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+        <Dock {bus} {registry} args={{ height: 96 }} id="smoke.dock" />
+      </View>
+    </View>
+    <View style={{ width: SHELL_WIDTH, height: 300, shrink: 0, background: '#101012' }}>
+      <WidgetGallery {bus} {registry} args={{}} id="smoke.gallery" />
+    </View>
+
     <View style={{ width: PANEL_WIDTH + 40, height: 720, shrink: 0 }}>
       <Panel {bus} {registry} args={{ offsetTop: 0, offsetEnd: 0 }} id="smoke.panel" />
     </View>

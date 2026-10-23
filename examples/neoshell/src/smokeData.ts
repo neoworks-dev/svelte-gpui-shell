@@ -1,6 +1,8 @@
 import type { Bus } from './host/bus.js'
 import type { ViewRegistry } from './host/plugins/views.js'
 import SmokeCard from './SmokeCard.svelte'
+import AirQuality from './extensions/airquality/AirQuality.svelte'
+import Weather from './extensions/weather/Weather.svelte'
 
 // The state the smoke harness's views read, as the backends would retain it.
 // The numbers are chosen to reach the ends of what a view draws: a flat day, a
@@ -13,23 +15,42 @@ export function publishSmokeData(bus: Bus, registry: ViewRegistry): void {
   publishAirQuality(bus)
   publishSystem(bus)
   publishNetwork(bus)
+  publishDesktop(bus)
   // The tray draws only while it is open, and a retained command is what a late subscriber still hears.
   bus.retain('quicksettings:open', {})
+  bus.retain('widgets:gallery', { open: true })
+  bus.retain('dock:reveal', { open: true })
+  bus.retain('hypr.windows', [{ class: 'term', address: '0x1', title: 'smoke terminal', pid: 0 }])
 }
 
 // Every command a view calls is answered, so no call waits out its timeout.
 function answerCommands(bus: Bus): void {
   bus.subscribe('*', (message) => {
     if (message.replyTo !== undefined && !message.type.startsWith('reply.')) {
-      bus.publish(message.replyTo, { ok: true })
+      bus.publish(message.replyTo, answerTo(message.type))
     }
   })
+}
+
+// The dock asks for the application catalog and expects a list; every other
+// command only needs an acknowledgement.
+function answerTo(type: string): unknown {
+  if (type === 'apps:list') {
+    return [
+      { id: 'term', name: 'Terminal', exec: 'term', icon: 'utilities-terminal', wmClass: 'term' },
+      { id: 'files', name: 'Files', exec: 'files', icon: 'system-file-manager', wmClass: 'files' },
+      { id: 'web', name: 'Browser', exec: 'web', icon: 'web-browser', wmClass: 'web' },
+    ]
+  }
+  return { ok: true }
 }
 
 // The gallery previews whatever the registry holds for a catalog entry's type,
 // so a catalog with no provider behind it would build the empty branch only.
 function registerCard(bus: Bus, registry: ViewRegistry): void {
   registry.register('smoke.card', SmokeCard)
+  registry.register('weather.card', Weather)
+  registry.register('airquality.card', AirQuality)
   bus.retain('widgets.catalog', {
     widgets: [
       {
@@ -94,7 +115,7 @@ function publishAirQuality(bus: Bus): void {
 }
 
 function publishSystem(bus: Bus): void {
-  bus.retain('hypr.monitors', [{ width: 1920, height: 1080 }])
+  bus.retain('hypr.monitors', [{ name: 'smoke', width: 900, height: 520, scale: 1 }])
   bus.retain('system.volume', { volume: 40, muted: false })
   bus.retain('system.brightness', { percent: 60, available: true })
   bus.retain('system.battery', { percent: 80, charging: false, status: 'Discharging' })
@@ -127,4 +148,16 @@ function publishNetwork(bus: Bus): void {
     { mac: '00:00:00:00:00:01', name: 'paired', connected: true, paired: true, icon: 'audio-headset', battery: 80 },
     { mac: '00:00:00:00:00:02', name: 'nearby', connected: false, paired: false, icon: '', battery: -1 },
   ])
+}
+
+function publishDesktop(bus: Bus): void {
+  bus.retain('files.desktop', {
+    path: '/smoke/Desktop',
+    entries: [
+      { name: 'Documents', path: '/smoke/Desktop/Documents', directory: true, icon: 'folder', image: false },
+      { name: 'notes.txt', path: '/smoke/Desktop/notes.txt', directory: false, icon: 'text-x-generic', image: false },
+      { name: 'report.pdf', path: '/smoke/Desktop/report.pdf', directory: false, icon: 'application-pdf', image: false },
+    ],
+  })
+  bus.retain('config', { appearance: { wallpaper: '' } })
 }
