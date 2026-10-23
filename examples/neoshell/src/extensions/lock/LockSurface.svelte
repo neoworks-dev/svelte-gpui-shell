@@ -28,11 +28,15 @@
 
   const AVATAR_PIXELS = 56
   const ART_PIXELS = 48
-  const SCRIM_TOP: Style['background'] = {
-    linear: { stops: [alpha('#000000', 0.45), alpha('#000000', 0.1)] },
-  }
-  const SCRIM_BOTTOM: Style['background'] = {
-    linear: { stops: [alpha('#000000', 0.15), alpha('#000000', 0.55)] },
+  const SCRIM: Style['background'] = {
+    linear: {
+      stops: [
+        alpha('#000000', 0.45),
+        [alpha('#000000', 0.1), 0.5],
+        [alpha('#000000', 0.15), 0.5],
+        alpha('#000000', 0.55),
+      ],
+    },
   }
   const HINT_IDLE = 'Enter Password'
   const HINT_WRONG = 'Wrong password'
@@ -178,10 +182,7 @@
 <View style={{ flex: 1, background: colors.canvas, color: colors.content }}>
   <WallpaperLayer {bus} />
 
-  <View style={{ position: 'absolute', inset: 0 }}>
-    <View style={{ flex: 1, background: SCRIM_TOP }}></View>
-    <View style={{ flex: 1, background: SCRIM_BOTTOM }}></View>
-  </View>
+  <View style={{ position: 'absolute', inset: 0, background: SCRIM }}></View>
 
   <View style={{ flex: 1, paddingTop: 72, paddingBottom: 56, align: 'center' }}>
     {@render clock()}
