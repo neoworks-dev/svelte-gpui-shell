@@ -3,7 +3,9 @@
 use gpui::{CursorStyle, Rgba, SharedString};
 use serde_json::Value;
 
-use super::{Align, Dimension, Easing, Gradient, Justify, MONO, SANS, Shadow, Sides, Style, TextAlign, Transition};
+use super::{
+    Align, Dimension, Easing, Gradient, Justify, MONO, SANS, Shadow, Sides, Stop, Style, TextAlign, Transition,
+};
 
 impl Style {
     /// Sets one property from the style object. Returns false when it is not understood,
@@ -306,15 +308,42 @@ fn shadows(value: &Value) -> Option<Vec<Shadow>> {
         .collect()
 }
 
-/// `{ linear: { angle?, stops: [stop, stop] } }`, where a stop is a colour or `[colour, position]`.
+/// The most stops a gradient has; the host's renderer takes no more.
+const MOST_STOPS: usize = 4;
+
+/// `{ linear: { angle?, stops } }` or `{ radial: { center?, radius?, stops } }`, where `stops` is
+/// two to four stops, each a colour or `[colour, position]`. A stop without a position is
+/// spread evenly between its neighbours' ends, the first at 0 and the last at 1.
 fn gradient(value: &Value) -> Option<Gradient> {
-    let linear = value.get("linear")?.as_object()?;
-    let angle = linear.get("angle").and_then(number).unwrap_or(180.0);
-    let stops = linear.get("stops")?.as_array()?;
-    let [first, second] = stops.as_slice() else {
+    if let Some(linear) = value.get("linear").and_then(Value::as_object) {
+        let angle = linear.get("angle").and_then(number).unwrap_or(180.0);
+        return Some(Gradient::Linear { angle, stops: stops(linear.get("stops")?)? });
+    }
+    let radial = value.get("radial")?.as_object()?;
+    let center = pair(radial.get("center"), (0.5, 0.5));
+    let radius = pair(radial.get("radius"), (0.5, 0.5));
+    Some(Gradient::Radial { center, radius, stops: stops(radial.get("stops")?)? })
+}
+
+/// `[x, y]`, a single number for both, or `default`.
+fn pair(value: Option<&Value>, default: (f32, f32)) -> (f32, f32) {
+    match value {
+        Some(Value::Array(parts)) => match (parts.first().and_then(number), parts.get(1).and_then(number)) {
+            (Some(x), Some(y)) => (x, y),
+            _ => default,
+        },
+        Some(other) => number(other).map_or(default, |both| (both, both)),
+        None => default,
+    }
+}
+
+fn stops(value: &Value) -> Option<Vec<Stop>> {
+    let listed = value.as_array()?;
+    if listed.len() < 2 || listed.len() > MOST_STOPS {
         return None;
-    };
-    Some(Gradient { angle, stops: [stop(first, 0.0)?, stop(second, 1.0)?] })
+    }
+    let last = listed.len() - 1;
+    listed.iter().enumerate().map(|(index, item)| stop(item, index as f32 / last as f32)).collect()
 }
 
 fn stop(value: &Value, default_position: f32) -> Option<(Rgba, f32)> {
@@ -428,25 +457,59 @@ mod tests {
     fn gradient_reads_angle_and_stops() {
         let style =
             style_of(json!({ "background": { "linear": { "angle": 135, "stops": [["#ff0000", 0.25], "#0000ff"] } } }));
-        let gradient = style.gradient.expect("a gradient");
-        assert_eq!(gradient.angle, 135.0);
-        assert_eq!(gradient.stops[0], (Rgba { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }, 0.25));
-        assert_eq!(gradient.stops[1], (Rgba { r: 0.0, g: 0.0, b: 1.0, a: 1.0 }, 1.0));
+        let Some(Gradient::Linear { angle, stops }) = style.gradient else {
+            panic!("a linear gradient");
+        };
+        assert_eq!(angle, 135.0);
+        assert_eq!(stops[0], (Rgba { r: 1.0, g: 0.0, b: 0.0, a: 1.0 }, 0.25));
+        assert_eq!(stops[1], (Rgba { r: 0.0, g: 0.0, b: 1.0, a: 1.0 }, 1.0));
         assert_eq!(style.background, None);
     }
 
     #[test]
     fn gradient_points_down_by_default() {
         let style = style_of(json!({ "background": { "linear": { "stops": ["#000", "#fff"] } } }));
-        assert_eq!(style.gradient.expect("a gradient").angle, 180.0);
+        assert!(matches!(style.gradient, Some(Gradient::Linear { angle, .. }) if angle == 180.0));
     }
 
     #[test]
-    fn gradient_needs_two_stops() {
+    fn gradient_needs_two_to_four_stops() {
         let mut style = Style::default();
-        let three = json!({ "linear": { "stops": ["#000", "#888", "#fff"] } });
-        assert!(!style.set("background", &three));
+        let one = json!({ "linear": { "stops": ["#000"] } });
+        let five = json!({ "linear": { "stops": ["#000", "#222", "#444", "#888", "#fff"] } });
+        assert!(!style.set("background", &one));
+        assert!(!style.set("background", &five));
         assert_eq!(style.gradient, None);
+    }
+
+    #[test]
+    fn stops_without_a_position_are_spread_evenly() {
+        let style =
+            style_of(json!({ "background": { "linear": { "stops": ["#000", ["#888", 0.9], "#aaa", "#fff"] } } }));
+        let Some(Gradient::Linear { stops, .. }) = style.gradient else {
+            panic!("a linear gradient");
+        };
+        let positions: Vec<f32> = stops.iter().map(|(_, at)| *at).collect();
+        assert_eq!(positions, vec![0.0, 0.9, 2.0 / 3.0, 1.0]);
+    }
+
+    #[test]
+    fn a_radial_gradient_reads_centre_radius_and_stops() {
+        let style = style_of(json!({
+            "background": { "radial": { "center": [1, 0.25], "radius": 0.8, "stops": ["#f00", "#00f00000"] } }
+        }));
+        let Some(Gradient::Radial { center, radius, stops }) = style.gradient else {
+            panic!("a radial gradient");
+        };
+        assert_eq!((center, radius), ((1.0, 0.25), (0.8, 0.8)));
+        assert_eq!(stops.len(), 2);
+        assert_eq!(stops[1].0.a, 0.0);
+    }
+
+    #[test]
+    fn a_radial_gradient_is_centred_by_default() {
+        let style = style_of(json!({ "background": { "radial": { "stops": ["#000", "#fff"] } } }));
+        assert!(matches!(style.gradient, Some(Gradient::Radial { center: (0.5, 0.5), radius: (0.5, 0.5), .. })));
     }
 
     #[test]

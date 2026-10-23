@@ -1,8 +1,11 @@
 //! Putting a parsed style onto GPUI elements and refinements.
 
-use gpui::{BoxShadow, FontWeight, Length, Styled, auto, linear_color_stop, linear_gradient, point, px, relative};
+use gpui::{
+    Background, BoxShadow, FontWeight, Length, LinearColorStop, Styled, auto, linear_color_stop, linear_gradient_stops,
+    point, px, radial_gradient, relative,
+};
 
-use super::{Align, Dimension, Gradient, Justify, Style, TextAlign};
+use super::{Align, Dimension, Gradient, Justify, Stop, Style, TextAlign};
 
 fn length(dimension: Dimension) -> Length {
     match dimension {
@@ -152,8 +155,8 @@ pub fn apply<T: Styled>(mut element: T, style: &Style) -> T {
     if let Some(colour) = style.background {
         element = element.bg(colour);
     }
-    if let Some(Gradient { angle, stops: [(from, from_at), (to, to_at)] }) = style.gradient {
-        element = element.bg(linear_gradient(angle, linear_color_stop(from, from_at), linear_color_stop(to, to_at)));
+    if let Some(gradient) = &style.gradient {
+        element = element.bg(background_of(gradient));
     }
     if let Some(opacity) = style.opacity {
         element = element.opacity(opacity);
@@ -253,4 +256,15 @@ fn apply_text<T: Styled>(mut element: T, style: &Style) -> T {
         element = element.line_clamp(lines);
     }
     element
+}
+
+fn color_stops(stops: &[Stop]) -> Vec<LinearColorStop> {
+    stops.iter().map(|(colour, at)| linear_color_stop(*colour, *at)).collect()
+}
+
+fn background_of(gradient: &Gradient) -> Background {
+    match gradient {
+        Gradient::Linear { angle, stops } => linear_gradient_stops(*angle, &color_stops(stops)),
+        Gradient::Radial { center, radius, stops } => radial_gradient(*center, *radius, &color_stops(stops)),
+    }
 }

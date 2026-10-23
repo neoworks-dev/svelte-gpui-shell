@@ -89,12 +89,16 @@ pub struct Transition {
     pub easing: Easing,
 }
 
-/// A linear gradient between two colours. The angle is in degrees, 0 pointing up and
-/// increasing clockwise; each stop is a colour and its position from 0 to 1 along the line.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Gradient {
-    pub angle: f32,
-    pub stops: [(Rgba, f32); 2],
+/// A colour and its position along a gradient, from 0 to 1.
+pub type Stop = (Rgba, f32);
+
+/// A gradient of two to four stops. A linear one has an angle in degrees, 0 pointing up and
+/// increasing clockwise; a radial one is an ellipse around a centre, both in fractions of the
+/// element's box, with stop positions as fractions of the radius.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Gradient {
+    Linear { angle: f32, stops: Vec<Stop> },
+    Radial { center: (f32, f32), radius: (f32, f32), stops: Vec<Stop> },
 }
 
 #[derive(Debug, Clone, PartialEq)]
