@@ -1,7 +1,7 @@
 <script lang="ts">
   import { subscribeTo } from '../../lib/bus'
   import type { ViewProps } from '../../host/plugins/views'
-  import { Button, Icon, Text, View } from '@neoworks/svelte-gpui/ui'
+  import { Button, Icon, Text, Tooltip, View } from '@neoworks/svelte-gpui/ui'
   import { cardStyle, hintStyle, titleStyle } from '../../cardLook'
   import { widgetBoxOf } from '../../lib/widget'
   import { alpha, colors } from '../../theme'
@@ -129,23 +129,21 @@
   {/if}
 
   <!-- The gear is always drawn rather than revealed on hover, and a control
-       that only exists while the pointer is over it cannot be found by touch.
-       TODO(host: popups) the "Edit Weather" tooltip. -->
+       that only exists while the pointer is over it cannot be found by touch. -->
   {#if !editing}
-    <Button
-      style={{
-        position: 'absolute',
-        top: 16,
-        right: 16,
-        padding: 4,
-        radius: 12,
-        color: alpha(colors.content, 0.45),
-        transition: 120,
-      }}
-      hover={{ background: alpha(colors.content, 0.1), color: colors.content }}
-      onpress={() => (editing = true)}
-    >
-      <Icon name="emblem-system-symbolic" size={16} />
-    </Button>
+    <Tooltip text="Edit Weather" side="bottom" align="end" anchorStyle={{ position: 'absolute', top: 16, right: 16 }}>
+      <Button
+        style={{
+          padding: 4,
+          radius: 12,
+          color: alpha(colors.content, 0.45),
+          transition: 120,
+        }}
+        hover={{ background: alpha(colors.content, 0.1), color: colors.content }}
+        onpress={() => (editing = true)}
+      >
+        <Icon name="emblem-system-symbolic" size={16} />
+      </Button>
+    </Tooltip>
   {/if}
 </View>
