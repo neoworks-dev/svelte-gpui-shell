@@ -189,6 +189,38 @@ the window under the panel: its press is the click-away.
 
 `examples/shell` has a scene for this (`SCENE=regions`).
 
+## Popups that rise above a window
+
+A `Popover` or `Overlay` is drawn inside its window and cut off at the window's edge. A dock that
+is 96 pixels tall has no room above itself for a menu. There is no separate popup surface: give
+the window the room, and let the pointer through where it is empty.
+
+```svelte
+<Window layer="top" anchor={["bottom", "left", "right"]} height={360} exclusiveZone={96}>
+  <View style={{ flex: 1, justify: "end", align: "center" }}>
+    <View input>
+      <Popover side="top" input>…</Popover>
+    </View>
+  </View>
+</Window>
+```
+
+The window is 360 pixels tall, but `exclusiveZone` keeps other windows out of only the dock's 96, and
+`input` on the dock and on the popover leaves the transparent rest click-through. `input` on a
+`Popover` or `Overlay` marks the box it is open in, and nothing while it is closed. A window that
+has to follow how big its content is can change its `height`, which follows changes.
+
+The alternative is a second `Window` on the `overlay` layer for the popup, which opens, closes and
+is placed by the `margin` and `anchor` of its own. Use it when the popup belongs on another monitor
+or has a lifetime of its own.
+
+A native `xdg_popup` (the fork has one, `WindowKind::AnchoredPopup`) was not wired in. Its size is
+fixed when it opens, it has to be opened from the input event that asks for a grab, and the
+compositor decides where it lands, while a taller window with an input region needs nothing from
+the compositor and keeps every `Popover` behaviour: flipping, outside presses and focus.
+
+`examples/shell` has the dock as a scene (`SCENE=dock`).
+
 ## Windows that draw nothing
 
 A window with no children, or whose content has no size, still maps: the host draws it as a

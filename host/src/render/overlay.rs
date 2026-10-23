@@ -446,6 +446,7 @@ impl Painter<'_> {
         let inherited = inherited.under(style);
         let children = self.children(id, &inherited, style.row == Some(true), cx);
         if children.is_empty() {
+            self.forget_bounds(id);
             return None;
         }
         let at = point_of(node);

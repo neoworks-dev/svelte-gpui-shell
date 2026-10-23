@@ -1,6 +1,6 @@
 <!-- An app with the shell primitives, for tests/shell.test.ts. -->
 <script lang="ts">
-  import { View, Window } from "@neoworks/svelte-gpui/ui";
+  import { Popover, View, Window } from "@neoworks/svelte-gpui/ui";
 
   let marked = $state(true);
 
@@ -12,4 +12,7 @@
 
 <Window layer="top" anchor={["top", "bottom", "left", "right"]} namespace="shell-test">
   <View input={marked} style={{ width: 0, height: 0 }} />
+  <Popover open input>
+    <View />
+  </Popover>
 </Window>

@@ -53,7 +53,7 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Slider` | `bind:value min max step disabled knobSize onchange oncommit style trackStyle fillStyle knobStyle`; width from its parent or `style` | |
 | `Meter` | `value min max levels color vertical duration style fillStyle` | |
 | `Spinner` | `size color period style`; draws every frame while mounted | |
-| `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
+| `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus input onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
 | `Window` | `style title width height appId monitor layer anchor exclusiveZone margin keyboard namespace onclose`; its children are drawn in a window of their own, open while it is mounted; with `layer` it is a layer surface | |
 
 `View` is a column. `Button` and `Input` are rows. Text properties (`color`,
@@ -236,7 +236,8 @@ with `scripts/shot.sh`, so an error shows up in the screenshot.
 - **Open it:** `start(App, {}, { window: { title, width, height, minWidth, minHeight } })`.
   `window: false` opens none, for an app that draws only in `Window`s.
 - **More windows:** `<Window>` opens one while mounted; state is shared, it is one app.
-- **Input regions:** in a layer surface, `<View input>` marks the parts that take the pointer; a window with any such view is click-through elsewhere, and zero-size ones make it click-through as a whole. A window with none takes input everywhere.
+- **Input regions:** in a layer surface, `<View input>` marks the parts that take the pointer; a window with any such view is click-through elsewhere, and zero-size ones make it click-through as a whole. A window with none takes input everywhere. `Overlay` and `Popover` take `input` too.
+- **Popups above a window:** none are separate surfaces. Make the layer window taller than its `exclusiveZone` and mark the dock and the open `Popover` with `input` (docs/window.md).
 - **Shells:** `<Window layer="top" anchor={["top","left","right"]} height={32} exclusiveZone={32} monitor={m.name}>` per `monitors.list` entry (reactive, from `@neoworks/svelte-gpui`). A `Window` naming a missing monitor does not open.
   `--width` and `--height` override the size.
 - **Read it,** reactively: `window.size` (`{ width, height }`), `scale`, `focused`,

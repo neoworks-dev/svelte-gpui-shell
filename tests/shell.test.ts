@@ -29,6 +29,11 @@ describe("input regions", () => {
     expect(run.mounted).toContainEqual([SET_ATTRIBUTE, marker, "input", ""]);
   });
 
+  test("a Popover with input marks its overlay", () => {
+    const overlay = run.mounted.find((op) => op[0] === CREATE_ELEMENT && op[2] === "g-overlay")![1];
+    expect(run.mounted).toContainEqual([SET_ATTRIBUTE, overlay, "input", ""]);
+  });
+
   test("the mark goes when the prop does, and comes back with it", () => {
     expect(run.unmarked).toContainEqual([SET_ATTRIBUTE, marker, "input", null]);
     expect(run.marked).toContainEqual([SET_ATTRIBUTE, marker, "input", ""]);

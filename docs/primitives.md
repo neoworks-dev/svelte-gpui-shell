@@ -417,6 +417,7 @@ children. Other components build on it; use it directly for anything `Popover` d
 | `layer` | `number` | Overlays with a higher layer are drawn over those with a lower one. |
 | `focusable` | `boolean` | Takes keyboard focus when pressed or when `focus()` is called. |
 | `keepFocus` | `boolean` | As on `View`: a press inside it does not move focus. For a list of suggestions under a field. |
+| `input` | `boolean` | As on `View`: in a layer surface, the box it is open in takes the pointer. |
 | `onoutside` | `(e: OutsideEvent) => void` | A button went down outside it (and outside any overlay opened from inside it). `e.anchor` says it went down on the parent. |
 | `style`, `hover`, `active`, `focus` | `Style` | As on `View`. |
 | `onpress`, `onhover`, `onlayout`, `onkey`, `onfocus`, `onblur` | | As on `View`. |
@@ -466,6 +467,7 @@ or Escape. Focus moves into it when it opens and goes back when it closes.
 | `children` | `Snippet<[PopoverApi]>` | The content. |
 | `side`, `align`, `crossOffset`, `flip`, `shift`, `margin`, `matchWidth`, `at`, `layer` | | As on `Overlay`. |
 | `offset` | `number` | The gap to the trigger. The default is 6. |
+| `input` | `boolean` | As on `View`, for the open panel: in a layer surface it takes the pointer, and the rest of the window may not. |
 | `style` | `Style` | The panel. The default is a dark card (`overlayLook.panel`). |
 | `anchorStyle` | `Style` | The wrapper around the trigger. It is `alignSelf: "start"` by default, so it is as wide as the trigger. |
 | `closeOnOutside`, `closeOnEscape` | `boolean` | Both on by default. |
