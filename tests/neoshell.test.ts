@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { inflateSync } from "node:zlib";
 import { parseCaptureFrame } from "../examples/neoshell/src/lib/captureFrame";
 import { cubicBezier } from "../examples/neoshell/src/lib/easing";
@@ -15,6 +15,8 @@ import { initialsOf, realNameOf } from "../examples/neoshell/src/system/userName
 import { DEFAULT_LIVE_OPTIONS, fullscreenShowing, isVideoPath, liveOptionsOf, onBatteryPower, shouldPlay } from "../examples/neoshell/src/extensions/neoshell/liveWallpaper";
 import { snapPoint } from "../examples/neoshell/src/extensions/neoshell/freeform";
 import { userDirectoryOf } from "../examples/neoshell/src/system/userDirs";
+import { Bus } from "../examples/neoshell/src/host/bus";
+import type { LinePeer, LineServerHandlers } from "../examples/neoshell/src/system/socket";
 import { anchorOf, exclusiveZoneOf, keyboardOf, sizeOf } from "../examples/neoshell/src/tree";
 
 describe("png", () => {
@@ -277,5 +279,33 @@ describe("desktop snapping", () => {
     const viewport = { width: 1920, height: 1080 };
     const landed = snapPoint({ x: 12, y: 300 }, { width: 96, height: 96 }, [], viewport);
     expect(landed.x).toBe(8);
+  });
+});
+
+describe("control socket", () => {
+  test("a subscribed peer is pushed what the bus publishes, one line each, until it leaves", async () => {
+    let handlers: LineServerHandlers | undefined;
+    mock.module("../examples/neoshell/src/system/socket", () => ({
+      serve: (_path: string, given: LineServerHandlers) => {
+        handlers = given;
+        return () => {};
+      },
+    }));
+    const { listenUnix } = await import("../examples/neoshell/src/host/plugins/unixSocket");
+    const bus = new Bus();
+    listenUnix(bus, "/s");
+
+    const pushed: string[] = [];
+    const peer: LinePeer = { id: 7, write: (data) => void pushed.push(data) };
+    handlers!.onPeer(peer);
+    handlers!.onLine(peer, '{"subscribe":["demo:topic"]}');
+
+    bus.publish("demo:topic", { n: 1 });
+    bus.publish("other:topic", { n: 2 });
+    expect(pushed).toEqual(['{"type":"demo:topic","data":{"n":1}}\n']);
+
+    handlers!.onPeerGone(peer);
+    bus.publish("demo:topic", { n: 3 });
+    expect(pushed).toHaveLength(1);
   });
 });

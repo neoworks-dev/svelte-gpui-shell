@@ -3,6 +3,7 @@ import { requireService } from '../services.js'
 import type { Bus } from '../bus.js'
 import { WireConnection } from '../wire.js'
 import { serve } from '../../system/socket.js'
+import type { LinePeer } from '../../system/socket.js'
 
 export interface UnixSocketConfig {
   socketPath: string
@@ -20,14 +21,38 @@ export const unixSocketPlugin: Plugin.Object<UnixSocketConfig> = {
   },
 }
 
-// One connection stands for every peer: the host answers a line with the
-// handler's return value only, so a peer cannot subscribe to what the bus
-// publishes. Publishing and retaining is what `neoshell emit` needs.
-function listenUnix(bus: Bus, socketPath: string): () => void {
-  const connection = new WireConnection(bus, () => {})
-  const stop = serve(socketPath, (line) => connection.feed(line + '\n'))
+// One WireConnection per peer: its subscriptions are pushed to it as lines, and
+// its retained values and subscriptions go when it leaves.
+export function listenUnix(bus: Bus, socketPath: string): () => void {
+  const connections = new Map<number, WireConnection>()
+  const stop = serve(socketPath, {
+    onPeer(peer) {
+      connections.set(peer.id, new WireConnection(bus, (line) => writeToPeer(peer, connections, line)))
+    },
+    onLine(peer, line) {
+      connections.get(peer.id)?.feed(line + '\n')
+    },
+    onPeerGone(peer) {
+      connections.get(peer.id)?.close()
+      connections.delete(peer.id)
+    },
+  })
   return () => {
     stop()
-    connection.close()
+    for (const connection of connections.values()) {
+      connection.close()
+    }
+    connections.clear()
+  }
+}
+
+// A write throws once the client has left; the connection is dropped so its
+// subscriptions stop firing.
+function writeToPeer(peer: LinePeer, connections: Map<number, WireConnection>, line: string): void {
+  try {
+    peer.write(line)
+  } catch {
+    connections.get(peer.id)?.close()
+    connections.delete(peer.id)
   }
 }
