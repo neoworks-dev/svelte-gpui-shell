@@ -49,10 +49,13 @@ impl Workbench {
             self.report_window(window, cx);
         }
         self.report_monitors(cx);
+        self.follow_input_regions(cx);
+        self.report_session_lock(cx);
         let version = self.svelte.tree.borrow().version;
         if version != self.seen_version {
             self.seen_version = version;
             self.sync_windows(cx);
+            self.sync_videos(cx);
             self.flush_dirty(cx);
             cx.notify();
         }

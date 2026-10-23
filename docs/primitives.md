@@ -33,6 +33,7 @@ the full set of pointer events.
 | `hover`, `active`, `focus` | `Style` | State styles. `active` applies while a button is held on it. |
 | `focusable` | `boolean` | Takes keyboard focus when pressed, which lets it receive `onkey`. |
 | `keepFocus` | `boolean` | A press on it, or on anything inside it, does not move focus: the field that has it keeps it, and nothing inside takes it. See [Events](events.md#keyboard-and-focus). |
+| `input` | `boolean` | In a layer surface: its box is part of the window's input region, and the rest of the window lets the pointer through. See [Input regions](window.md#input-regions). |
 | `onpress` | `(e: PointerEvent) => void` | A click: a button pressed and released on it. |
 | `onhover` | `(hovered: boolean) => void` | The pointer entered (`true`) or left (`false`). |
 | `ondown` | `(e: PointerEvent) => void` | A button went down on it. This captures the pointer: `onmove` and `onup` follow it anywhere until release. |
@@ -416,6 +417,7 @@ children. Other components build on it; use it directly for anything `Popover` d
 | `layer` | `number` | Overlays with a higher layer are drawn over those with a lower one. |
 | `focusable` | `boolean` | Takes keyboard focus when pressed or when `focus()` is called. |
 | `keepFocus` | `boolean` | As on `View`: a press inside it does not move focus. For a list of suggestions under a field. |
+| `input` | `boolean` | As on `View`: in a layer surface, the box it is open in takes the pointer. |
 | `onoutside` | `(e: OutsideEvent) => void` | A button went down outside it (and outside any overlay opened from inside it). `e.anchor` says it went down on the parent. |
 | `style`, `hover`, `active`, `focus` | `Style` | As on `View`. |
 | `onpress`, `onhover`, `onlayout`, `onkey`, `onfocus`, `onblur` | | As on `View`. |
@@ -431,6 +433,30 @@ is a child of a `Button` is placed against that button. `Popover` and `Tooltip` 
 Limits: an overlay inside another is drawn in place after its content, so it is clipped by an
 `overflow: "hidden"` on the content around it. The window's size is read when the overlay is laid out; an overlay
 inside a part of the window that did not redraw is not moved when the window is resized.
+
+## Video
+
+A video file or stream, played by the host through GStreamer and drawn in its box. It loops and is
+muted unless told otherwise, which is what a live wallpaper wants. The host decodes with VA-API when
+the system has it and scales every frame to the size the box shows, so a video larger than the
+screen costs little more than one that fits. A host built without the `video` feature draws nothing
+and the video's `onerror` fires.
+
+| Prop | Type | |
+|---|---|---|
+| `src` | `string` | A path (relative ones start in the app's directory), a `file://` URI, or a URL GStreamer can read. |
+| `loop` | `boolean` | Plays again when it ends, without a gap. On by default. |
+| `muted` | `boolean` | No sound. On by default; off decodes the audio too. Changing it, or `src` or `maxFps`, starts the pipeline again. |
+| `paused` | `boolean` | |
+| `rate` | `number` | 0.1 to 8, 1 by default. A change seeks to where it is. |
+| `fit` | `"contain"` \| `"cover"` \| `"fill"` | How the picture fills the box. `"contain"` by default. |
+| `maxFps` | `number` | Drops frames above this rate before they are converted. |
+| `style` | `Style` | The box. `radius` rounds the picture. |
+| `onready` | `(e: { duration: number }) => void` | The video opened; `duration` is in milliseconds. |
+| `onend` | `() => void` | It reached its end, which a looping video never does. |
+| `onerror` | `(e: { message: string }) => void` | It could not be opened or stopped playing. |
+
+`examples/shell` has a wallpaper with controls (`SCENE=video`, `VIDEO=/path/to/file.mp4`).
 
 ## Window
 
@@ -450,6 +476,7 @@ opens while it is mounted and closes when it is removed (`docs/window.md`).
 | `margin` | `number` \| `[top, right, bottom, left]` | Space from the anchor edges. |
 | `keyboard` | `"none"` \| `"exclusive"` \| `"on-demand"` | Whether a layer surface takes the keyboard. Follows changes. |
 | `namespace` | `string` | The name compositor rules match a layer surface by. |
+| `lock` | `boolean` | A session lock surface on its `monitor`, which it needs. The session is locked while any is mounted (`docs/window.md#locking-the-session`). Read when it opens. |
 | `onclose` | `() => void` | The user or the compositor closed it. It stays closed until it is removed and mounted again. |
 
 ## Popover
@@ -465,6 +492,7 @@ or Escape. Focus moves into it when it opens and goes back when it closes.
 | `children` | `Snippet<[PopoverApi]>` | The content. |
 | `side`, `align`, `crossOffset`, `flip`, `shift`, `margin`, `matchWidth`, `at`, `layer` | | As on `Overlay`. |
 | `offset` | `number` | The gap to the trigger. The default is 6. |
+| `input` | `boolean` | As on `View`, for the open panel: in a layer surface it takes the pointer, and the rest of the window may not. |
 | `style` | `Style` | The panel. The default is a dark card (`overlayLook.panel`). |
 | `anchorStyle` | `Style` | The wrapper around the trigger. It is `alignSelf: "start"` by default, so it is as wide as the trigger. |
 | `closeOnOutside`, `closeOnEscape` | `boolean` | Both on by default. |

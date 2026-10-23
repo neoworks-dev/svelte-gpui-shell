@@ -11,12 +11,15 @@ import { limitFiles, type FilesLimit } from "./io/files";
 import { limitProcesses, type ProcessLimit } from "./io/process";
 import { limitSockets, type SocketLimit } from "./io/socket";
 import { receive as receiveMonitors } from "./monitors.svelte";
+import { receive as receiveSessionLock, type SessionLockState } from "./session-lock.svelte";
 import { askToClose, declareWindow, receive as receiveWindow, type WindowOptions } from "./window.svelte";
 
 export type { HostEvent } from "./host/events";
 export { window } from "./window.svelte";
 export { monitors } from "./monitors.svelte";
 export type { Monitor } from "./monitors.svelte";
+export { sessionLock } from "./session-lock.svelte";
+export type { SessionLockState } from "./session-lock.svelte";
 export type { CloseHandler, WindowOptions } from "./window.svelte";
 export { element } from "./ui/element";
 export type { ElementMethods, ElementProps } from "./ui/element";
@@ -77,7 +80,7 @@ export interface StartOptions {
 /**
  * Mounts a component into the host's root, and exposes the entry points the host
  * calls back into: `__event` for input, `__io` for background calls finishing,
- * `__window` for the window's state, `__monitors` for the monitors, `__closeRequested` for the close button, and `__pump` for the clock, which answers when it next has work (see `wake`).
+ * `__window` for the window's state, `__monitors` for the monitors, `__sessionLock` for the lock, `__closeRequested` for the close button, and `__pump` for the clock, which answers when it next has work (see `wake`).
  */
 export function start(Component: unknown, props: Record<string, unknown> = {}, options: StartOptions = {}): void {
   // The limits go first, so nothing the app does while mounting can run without them.
@@ -132,6 +135,10 @@ export function start(Component: unknown, props: Record<string, unknown> = {}, o
   };
   globals.__monitors = (list: string): void => {
     receiveMonitors(JSON.parse(list));
+    settle();
+  };
+  globals.__sessionLock = (state: SessionLockState): void => {
+    receiveSessionLock(state);
     settle();
   };
   globals.__closeRequested = askToClose;

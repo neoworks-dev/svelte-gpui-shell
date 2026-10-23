@@ -25,6 +25,12 @@
     focusable?: boolean;
     /** A press here does not take focus from the field that has it, nor give it to anything. */
     keepFocus?: boolean;
+    /**
+     * In a layer surface: this view's box takes the pointer, and the rest of the window lets it
+     * through to what is below. A window with no `input` view takes it everywhere, and one whose
+     * `input` views have no area, such as a closed tray's marker, takes none.
+     */
+    input?: boolean;
     onpress?: (event: PointerEvent) => void;
     onhover?: (hovered: boolean) => void;
     /** A button went down here; `onmove` and `onup` follow wherever the pointer goes until release. */
@@ -57,6 +63,7 @@
     focus: encode(props.focus),
     focusable: props.focusable ? "" : undefined,
     keepfocus: props.keepFocus ? "" : undefined,
+    input: props.input ? "" : undefined,
     onpress: listener(props.onpress, itself<PointerEvent>),
     onhover: listener(props.onhover, (event: { hovered: boolean }) => event.hovered),
     ondown: listener(props.ondown, itself<PointerEvent>),

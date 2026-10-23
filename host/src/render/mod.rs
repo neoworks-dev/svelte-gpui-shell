@@ -81,6 +81,10 @@ pub struct Interaction {
     pub bounds_changed: Rc<RefCell<HashSet<NodeId>>>,
     /// The parts of the document drawn as views of their own, by their topmost element.
     pub views: RefCell<HashMap<NodeId, Entity<NodeView>>>,
+    /// The players behind the videos, by element.
+    pub videos: RefCell<HashMap<NodeId, Rc<RefCell<crate::video::Player>>>>,
+    /// Players that were stopped, whose images the window must still free.
+    pub retired_videos: RefCell<Vec<Rc<RefCell<crate::video::Player>>>>,
     /// The elements that are the top of a view, as of the last time they were built.
     pub view_roots: RefCell<HashSet<NodeId>>,
     /// The app's own GPUI views, by the node they are drawn in. They outlive a reload (see `elements.rs`).
@@ -109,6 +113,8 @@ impl Interaction {
             scale: Cell::new(1.0),
             bounds_changed: Rc::new(RefCell::new(HashSet::new())),
             views: RefCell::new(HashMap::new()),
+            videos: RefCell::new(HashMap::new()),
+            retired_videos: RefCell::new(Vec::new()),
             view_roots: RefCell::new(HashSet::new()),
             instances: RefCell::new(Instances::default()),
             workbench: RefCell::new(Some(cx.weak_entity())),
@@ -132,6 +138,7 @@ impl Interaction {
         self.caret_on.set(true);
         self.bounds_changed.borrow_mut().clear();
         self.views.borrow_mut().clear();
+        self.videos.borrow_mut().clear();
         self.view_roots.borrow_mut().clear();
     }
 
@@ -400,6 +407,7 @@ impl<'a> Painter<'a> {
         };
         let mut computed = (*self.computed(id)).clone();
         if computed.style.hidden == Some(true) {
+            self.forget_bounds(id);
             return None;
         }
         if primitive == Primitive::Window {
@@ -435,16 +443,30 @@ impl<'a> Painter<'a> {
             Primitive::Icon => self.icon_content(element, node, style, &inherited, cx),
             Primitive::Input => self.field_content(element, id, node, style, &inherited, cx),
             Primitive::Canvas => self.canvas_content(element, id, style),
+            Primitive::Video => self.video_content(element, id, style),
             Primitive::Element => self.element_content(element, id, node),
             Primitive::View | Primitive::Button | Primitive::Scroll | Primitive::Overlay | Primitive::Window => {
                 let row = style.row == Some(true);
                 element.children(self.children(id, &inherited, row, cx))
             }
         };
-        if node.observed() || listens_for_pointer(node) || listens_for_drag(node) {
+        if node.observed() || listens_for_pointer(node) || listens_for_drag(node) || is_input_region(node) {
             element = element.child(self.measure(id));
         }
         Some(self.interactive(element, id, node, primitive, &computed, eased, cx))
+    }
+
+    /// Drops where an element and everything inside it last came out, as it is no longer drawn.
+    /// What stayed would be taken for a place they still have, such as in an input region.
+    fn forget_bounds(&self, id: NodeId) {
+        let mut placed = self.interaction.bounds.borrow_mut();
+        let mut pending = vec![id];
+        while let Some(next) = pending.pop() {
+            placed.remove(&next);
+            if let Some(node) = self.tree.nodes.get(&next) {
+                pending.extend(node.children.iter().copied());
+            }
+        }
     }
 
     /// An invisible layer that records where its parent came out.
@@ -469,6 +491,11 @@ impl<'a> Painter<'a> {
         .size_full()
         .into_any_element()
     }
+}
+
+/// Whether the element is marked `input`, so that its place is part of its window's input region.
+fn is_input_region(node: &Node) -> bool {
+    node.attributes.contains_key("input")
 }
 
 /// Whether a box is more than a screen away from the window.

@@ -545,6 +545,13 @@ impl App {
         self.after_call();
     }
 
+    /// Tells the app where the session lock is: `unlocked`, `locking`, `locked` or `finished`.
+    pub fn session_lock(&self, state: &str) {
+        let state = state.to_string();
+        self.call_app(ErrorKind::Event, "__sessionLock", |function, _| function.call::<_, ()>((state,)));
+        self.after_call();
+    }
+
     /// Asks the app whether the window may close now. `false` when a handler refused, or
     /// when one is still deciding: the app closes the window itself once it has said yes.
     pub fn close_requested(&self) -> bool {

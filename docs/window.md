@@ -162,6 +162,114 @@ stretches it along an axis whose `width` or `height` is 0 or left out:
 that is not connected does not open at all, rather than on whichever monitor the compositor
 would choose. `examples/layer-shell` has a bar and a card on one monitor.
 
+## Input regions
+
+A layer surface takes the pointer over its whole area. A shell often has a window the size of the
+output with only a panel in it, and everything else has to reach the windows below. Mark the
+parts that take the pointer with `input` on a `View`:
+
+```svelte
+<Window monitor="DP-2" layer="top" anchor={["top", "bottom", "left", "right"]}>
+  <View input style={{ alignSelf: "end", margin: 20, width: 300, height: 200 }}>…</View>
+</Window>
+```
+
+- A window with no `input` view takes the pointer everywhere, as before.
+- With some, the window takes it only inside those views' boxes. Touch input follows the same region.
+- A window whose `input` views have no area is click-through as a whole. A tray that is closed
+  keeps a zero-size `<View input style={{ width: 0, height: 0 }} />`, so the surface stays
+  click-through while the tray is shut and the window is not one that takes the pointer
+  everywhere again.
+- The region follows the views as they move, grow or come and go, and is read from where
+  they were laid out, so a view with `display: "none"` or one that an ancestor hides adds
+  nothing. A `View` inside a nested `Window` belongs to that one.
+
+To dismiss a tray when the user clicks away, put a near-transparent `input` view that fills
+the window under the panel: its press is the click-away.
+
+`examples/shell` has a scene for this (`SCENE=regions`).
+
+## Popups that rise above a window
+
+A `Popover` or `Overlay` is drawn inside its window and cut off at the window's edge. A dock that
+is 96 pixels tall has no room above itself for a menu. There is no separate popup surface: give
+the window the room, and let the pointer through where it is empty.
+
+```svelte
+<Window layer="top" anchor={["bottom", "left", "right"]} height={360} exclusiveZone={96}>
+  <View style={{ flex: 1, justify: "end", align: "center" }}>
+    <View input>
+      <Popover side="top" input>…</Popover>
+    </View>
+  </View>
+</Window>
+```
+
+The window is 360 pixels tall, but `exclusiveZone` keeps other windows out of only the dock's 96, and
+`input` on the dock and on the popover leaves the transparent rest click-through. `input` on a
+`Popover` or `Overlay` marks the box it is open in, and nothing while it is closed. A window that
+has to follow how big its content is can change its `height`, which follows changes.
+
+The alternative is a second `Window` on the `overlay` layer for the popup, which opens, closes and
+is placed by the `margin` and `anchor` of its own. Use it when the popup belongs on another monitor
+or has a lifetime of its own.
+
+A native `xdg_popup` (the fork has one, `WindowKind::AnchoredPopup`) was not wired in. Its size is
+fixed when it opens, it has to be opened from the input event that asks for a grab, and the
+compositor decides where it lands, while a taller window with an input region needs nothing from
+the compositor and keeps every `Popover` behaviour: flipping, outside presses and focus.
+
+`examples/shell` has the dock as a scene (`SCENE=dock`).
+
+## Locking the session
+
+A `Window` with `lock` is a lock surface (ext-session-lock) on its `monitor`. The session is locked
+while at least one lock window is mounted: the compositor then shows nothing but the lock
+surfaces and sends input only to them. Mount one per monitor, and unlock by unmounting all of them
+in the same update, which is what an unlock after a good password does:
+
+```svelte
+<script lang="ts">
+  import { monitors, sessionLock } from "@neoworks/svelte-gpui";
+  let locked = $state(false);
+</script>
+
+{#if locked}
+  {#each monitors.list as monitor (monitor.name)}
+    <Window lock monitor={monitor.name}>
+      <LockScreen onunlock={() => (locked = false)} />
+    </Window>
+  {/each}
+{/if}
+```
+
+The compositor sizes a lock surface and gives it the keyboard; `layer`, `anchor`, `width` and the
+rest are ignored, and a lock window without a `monitor` does not open. It is read when it opens.
+
+`sessionLock.state` says where the lock is, and is reactive:
+
+| State | Meaning |
+|---|---|
+| `"unlocked"` | No lock window is mounted. |
+| `"locking"` | Lock windows are mounted and the compositor has not confirmed the lock yet. |
+| `"locked"` | The compositor confirmed the lock. Only now is the session safe to leave. |
+| `"finished"` | Lock windows are mounted and none is left: the compositor refused or ended the lock (another locker holds it, or it was restored), or the host refused to open them. It returns to `"unlocked"` when the app unmounts them. |
+
+A monitor plugged in while locked needs a lock window of its own, which the `each` above gives
+it. Unmounting only some of the windows keeps the session locked.
+
+A broken locker traps the session, so the host opens lock windows only in a process started with
+`SVELTE_GPUI_ALLOW_SESSION_LOCK=1`. Without it a lock window does not open, a message says so,
+and the state goes to `"finished"`; `scripts/shot.sh` never sets it, so a test cannot lock.
+The Hyprland option `misc:allow_session_lock_restore = true` lets a new locker replace one that
+crashed. Draw the lock screen's content as an ordinary component (`examples/shell` has
+`LockSurface` and the scene `SCENE=lock`) and look at it in a normal window first.
+
+## Windows that draw nothing
+
+A window with no children, or whose content has no size, still maps: the host draws it as a
+fully transparent buffer, so the compositor does not wait on it or send it a new size again.
+
 ## Monitors
 
 `monitors.list` from `@neoworks/svelte-gpui` is the connected monitors, each with its `name`

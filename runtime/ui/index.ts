@@ -12,6 +12,7 @@ export { default as List } from "./List.svelte";
 export { default as Tree } from "./Tree.svelte";
 export { default as Presence } from "./Presence.svelte";
 export { default as Canvas } from "./Canvas.svelte";
+export { default as Video } from "./Video.svelte";
 export { default as Overlay } from "./Overlay.svelte";
 export { default as Window } from "./Window.svelte";
 export { default as Popover } from "./Popover.svelte";

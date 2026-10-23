@@ -6,6 +6,7 @@ mod editing;
 mod elements;
 mod file_drop;
 mod ime;
+mod input_region;
 mod io;
 mod keys;
 mod overlay;
@@ -14,6 +15,8 @@ mod reload;
 mod reports;
 mod script;
 mod scrolling;
+mod session_lock;
+mod videos;
 mod windowing;
 mod windows;
 

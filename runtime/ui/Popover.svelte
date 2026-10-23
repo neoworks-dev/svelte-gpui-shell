@@ -54,6 +54,8 @@
     /** Gives focus back to what had it when it closes by Escape or a choice. The default is on. */
     restoreFocus?: boolean;
     layer?: number;
+    /** In a layer surface: the open popover's box takes the pointer (see `View`'s `input`). */
+    input?: boolean;
     onclose?: (reason: CloseReason) => void;
     onkey?: (event: KeyEvent) => void;
   }
@@ -78,6 +80,7 @@
     focusPanel = true,
     restoreFocus: giveFocusBack = true,
     layer,
+    input,
     onclose,
     onkey,
   }: Props = $props();
@@ -156,6 +159,7 @@
     {matchWidth}
     {at}
     {layer}
+    {input}
     {style}
     focusable
     onoutside={outside}

@@ -1,7 +1,9 @@
 //! Canvases, images and icons.
 
 use gpui::prelude::*;
-use gpui::{Context, Div, ObjectFit, SharedString, StyledImage, Svg, Transformation, canvas, img, px, radians, svg};
+use gpui::{
+    Bounds, Context, Div, ObjectFit, SharedString, StyledImage, Svg, Transformation, canvas, img, px, radians, svg,
+};
 
 use super::{Inherited, Painter, attribute, is_far_away};
 use crate::assets::register_svg;
@@ -43,6 +45,45 @@ impl Painter<'_> {
         .absolute()
         .top_0()
         .left_0()
+        .size_full();
+        element.child(layer)
+    }
+
+    /// The newest frame of the video, scaled in the pipeline to what its box shows, and placed in the
+    /// box as `fit` says.
+    pub(super) fn video_content(&self, element: Div, id: NodeId, style: &Style) -> Div {
+        let Some(player) = self.interaction.videos.borrow().get(&id).cloned() else {
+            return element;
+        };
+        let radii = style.radius.map(|radius| px(radius.unwrap_or(0.0)));
+        let layer = canvas(
+            |bounds, _, _| bounds,
+            move |bounds, _, window, _cx| {
+                let scale = window.scale_factor();
+                let pixels = (
+                    (f32::from(bounds.size.width) * scale).round() as u32,
+                    (f32::from(bounds.size.height) * scale).round() as u32,
+                );
+                let mut player = player.borrow_mut();
+                let picture = player.picture(pixels);
+                for old in std::mem::take(&mut player.stale) {
+                    window.drop_image(old).ok();
+                }
+                let Some((image, (width, height))) = picture else {
+                    return;
+                };
+                let shown = gpui::size(px(width as f32 / scale), px(height as f32 / scale));
+                let placed = Bounds::centered_at(bounds.center(), shown);
+                let corners = gpui::Corners {
+                    top_left: radii[0],
+                    top_right: radii[1],
+                    bottom_right: radii[2],
+                    bottom_left: radii[3],
+                };
+                window.paint_image(bounds, placed, corners, image, 0, false).ok();
+            },
+        )
+        .absolute()
         .size_full();
         element.child(layer)
     }

@@ -17,6 +17,11 @@ impl Workbench {
             self.deliver_element_event(completion.call as NodeId, &payload, cx);
             return;
         }
+        if completion.settle == Settle::Video {
+            let payload = serde_json::from_str(&completion.json).unwrap_or_default();
+            self.deliver_video_event(completion.call as NodeId, &payload, cx);
+            return;
+        }
         self.svelte.deliver(completion);
         self.run_main_jobs(cx);
         self.run_element_calls(cx);

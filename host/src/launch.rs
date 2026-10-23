@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use gpui::{App, Bounds, TitlebarOptions, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, Entity, Global, TitlebarOptions, WindowBounds, WindowOptions, prelude::*, px, size};
 
 use crate::assets;
 use crate::diagnostics::{heap_megabytes, memory_megabytes};
@@ -137,6 +137,11 @@ impl Options {
     }
 }
 
+/// Keeps the workbench alive for as long as the process runs.
+struct Running(#[allow(dead_code)] Entity<Workbench>);
+
+impl Global for Running {}
+
 /// Runs the app until its window closes.
 pub fn run(options: Options) {
     let source = Source::find(&options);
@@ -176,6 +181,8 @@ pub fn run(options: Options) {
         let app_id = opening.app_id.clone();
         let workbench = cx.new(|cx| Workbench::new(svelte, images, options.elements.clone(), app_id, cx));
         workbench.update(cx, |workbench, _| workbench.send_errors_to(error_output));
+        // An app without a window of its own (a shell) has nothing else holding the workbench.
+        cx.set_global(Running(workbench.clone()));
         if own_window {
             let window = Workbench::open_window(&workbench, ROOT, opening, cx).expect("the app's window opens");
             // Wayland takes the title from the window, not from the options it opens with.
