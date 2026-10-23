@@ -120,9 +120,8 @@ From `@neoworks/svelte-gpui/ui`:
 | `Presence` | A view that plays Svelte transitions as it comes and goes: `<Presence in={[fly, { x: -20 }]} out={fade}>`. Svelte only allows `in:` and `out:` on elements, so this carries them through components. |
 | `Overlay` | Content drawn above everything, placed against its parent's box: a side, an alignment, a gap, flipped and shifted to stay in the window. Or at a point in the window. |
 
-Checkboxes, switches, sliders and segmented controls are not primitives. They are
-ordinary Svelte components built from these; the demo has one of each in
-`examples/demo/src/components`.
+Checkboxes and segmented controls are not primitives. They are ordinary Svelte components
+built from these; the demo has one of each in `examples/demo/src/components`.
 
 Some come with the library because they need the host's help, or are worth getting right once, and are
 imported from the same place:
@@ -133,6 +132,8 @@ imported from the same place:
 | `Tooltip` | A label that appears after the pointer has rested on its content. |
 | `Menu`, `ContextMenu` | A list of actions with keyboard control, in a popover or at the pointer on a right press. |
 | `Select` | A dropdown. |
+| `Switch`, `Slider` | An on and off switch with a bindable `checked`, and a draggable value between `min` and `max` with a bindable `value`, `step` and keys. |
+| `Meter`, `Spinner` | A level bar whose colour follows `levels`, and a ring that turns while something takes an unknown time. |
 | `Draggable`, `DropTarget` | Dragging inside the app: a preview follows the pointer, and targets hear the drag and the drop. |
 | `Tree` | Expanding and collapsing rows, keyboard navigation, built on `List`. |
 

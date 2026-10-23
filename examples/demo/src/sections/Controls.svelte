@@ -3,12 +3,10 @@
   the clipboard work. Everything else here is a Svelte component made of primitives.
 -->
 <script lang="ts">
-  import { Button, Input, Text, View, type KeyEvent } from "@neoworks/svelte-gpui/ui";
+  import { Button, Input, Meter, Slider, Spinner, Switch, Text, View, type KeyEvent } from "@neoworks/svelte-gpui/ui";
   import Card from "../components/Card.svelte";
   import Checkbox from "../components/Checkbox.svelte";
   import Segmented from "../components/Segmented.svelte";
-  import Slider from "../components/Slider.svelte";
-  import Switch from "../components/Switch.svelte";
   import { button, buttonActive, buttonHover, caption, colors, field, fieldFocus, mono, primaryButton, primaryHover, row } from "../theme";
 
   let name = $state("");
@@ -77,13 +75,26 @@
       {/if}
     </Card>
 
-    <Card title="Made of primitives" note="Checkbox, switch, slider and segmented control are ordinary Svelte components." style={{ flex: 1 }}>
-      <Switch bind:on={notify} label="Notifications" />
-      <Switch bind:on={compact} label="Compact rows" />
+    <Card title="Controls" note="Switch, slider, meter and spinner come with the library; the checkbox and the segmented control are Svelte components in this demo." style={{ flex: 1 }}>
+      <Switch bind:checked={notify}>Notifications</Switch>
+      <Switch bind:checked={compact}>Compact rows</Switch>
       <Checkbox bind:checked={agree} label="I have read the terms" />
       <View style={{ gap: 4 }}>
         <Text style={caption}>Volume</Text>
-        <Slider bind:value={volume} />
+        <View style={{ direction: "row", align: "center", gap: 12 }}>
+          <Slider bind:value={volume} style={{ flex: 1 }} />
+          <Text style={{ ...mono, color: colors.dim, width: 28 }}>{volume}</Text>
+        </View>
+        <Meter value={volume} levels={[{ upTo: 30, color: colors.red }, { upTo: 70, color: colors.amber }, { upTo: 100, color: colors.green }]} />
+        <View style={{ direction: "row", align: "center", gap: 12 }}>
+          <Spinner />
+          <Spinner size={24} color={colors.accentText} period={1200} />
+          <View style={{ direction: "row", align: "end", gap: 4 }}>
+            {#each [20, 45, 70, 95] as level (level)}
+              <Meter value={level} vertical style={{ height: 28 }} />
+            {/each}
+          </View>
+        </View>
       </View>
       <View style={{ gap: 4 }}>
         <Text style={caption}>Size</Text>

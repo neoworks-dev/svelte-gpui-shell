@@ -49,6 +49,10 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Icon` | `svg` (markup), `src`, or `name` (a freedesktop icon name such as `firefox` or `audio-volume-high-symbolic`, or an absolute path; `fallback`, `theme`), `size color style`; svg icons and `-symbolic` theme icons are tinted by the text colour, other theme icons keep their colours | |
 | `Canvas` | `style ondown onmove onup onhover onwheel onlayout` | `begin(x,y,pen) lineTo end line fillRect fillCircle clear` |
 | `Presence` | `in out style`, each a transition or `[fn, params]` | |
+| `Switch` | `bind:checked disabled size onchange style hover focus trackStyle checkedStyle knobStyle`; children are a label | |
+| `Slider` | `bind:value min max step disabled knobSize onchange oncommit style trackStyle fillStyle knobStyle`; width from its parent or `style` | |
+| `Meter` | `value min max levels color vertical duration style fillStyle` | |
+| `Spinner` | `size color period style`; draws every frame while mounted | |
 | `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
 
 `View` is a column. `Button` and `Input` are rows. Text properties (`color`,
@@ -148,8 +152,9 @@ A theme is plain data: exported `Style` objects spread together, or combined wit
 
 ## Patterns
 
-- **Controls** such as checkboxes, switches, sliders and tabs are Svelte components
-  built from `Button`/`View`. `examples/demo/src/components` has working ones.
+- **Controls:** `Switch` (`bind:checked`, children are its label), `Slider` (`bind:value min max step`, keys, `onchange`, `oncommit`),
+  `Meter` (`value`, `levels=[{ upTo, color }]`, `vertical`) and `Spinner` (`size color period`) come with the library.
+  Checkboxes and tabs are Svelte components built from `Button`/`View`; `examples/demo/src/components` has working ones.
 - **Drag or slider:** set a flag in `ondown`, update in `onmove`, clear it in `onup`.
   The pointer is captured, so moves keep arriving outside the element. Clamp `e.x`.
 - **Many marks** (drawings, plots): use one `Canvas`, never a `View` per mark.

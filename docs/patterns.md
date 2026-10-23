@@ -2,10 +2,11 @@
 
 ## Building your own controls
 
-Checkboxes, switches, sliders, tabs and menus are not primitives. Build them from
+Checkboxes, tabs and segmented controls are not primitives. Build them from
 `Button`, `View`, `Text` and `Icon` as ordinary Svelte components with bindable props.
-`examples/demo/src/components` has a checkbox, a switch, a slider and a segmented
-control.
+`examples/demo/src/components` has a checkbox and a segmented control. `Switch`, `Slider`,
+`Meter` and `Spinner` come with the library (see [Primitives](primitives.md#switch)), and
+are built the same way.
 
 A checkbox:
 
@@ -34,7 +35,8 @@ A checkbox:
 Because `Button` is focusable and presses on Enter and Space, the checkbox works from
 the keyboard without extra code.
 
-A slider uses pointer capture, so dragging keeps working outside the track:
+A slider uses pointer capture, so dragging keeps working outside the track. `Slider` is this, with
+keys and a step; to build another kind, start from:
 
 ```svelte
 <script lang="ts">

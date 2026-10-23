@@ -1,8 +1,7 @@
 <!-- Text: one paragraph per `Text`, with nested `Text` for runs that look different. -->
 <script lang="ts">
-  import { Text, View } from "@neoworks/svelte-gpui/ui";
+  import { Slider, Text, View } from "@neoworks/svelte-gpui/ui";
   import Card from "../components/Card.svelte";
-  import Slider from "../components/Slider.svelte";
   import { caption, colors, mono } from "../theme";
 
   let width = $state(420);
@@ -50,7 +49,10 @@
   </Card>
 
   <Card title="Wrapping" note="Drag to change the column's width.">
-    <Slider bind:value={width} min={160} max={640} width={260} />
+    <View style={{ direction: "row", align: "center", gap: 12 }}>
+      <Slider bind:value={width} min={160} max={640} style={{ width: 260 }} />
+      <Text style={{ ...mono, color: colors.dim }}>{width}</Text>
+    </View>
     <View style={{ direction: "row", gap: 16, align: "start" }}>
       <View style={{ width, gap: 10, padding: 12, radius: 8, background: colors.window }}>
         <Text style={caption}>wraps</Text>
