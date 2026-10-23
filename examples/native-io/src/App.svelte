@@ -6,8 +6,6 @@
   import { processes, unixSockets } from "@neoworks/svelte-gpui";
   import { Scroll, Text, View } from "@neoworks/svelte-gpui/ui";
 
-  declare const console: { log(...args: unknown[]): void };
-
   interface Check {
     name: string;
     state: "running" | "ok" | "FAIL";
