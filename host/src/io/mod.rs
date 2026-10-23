@@ -7,13 +7,16 @@
 //! its call open and sends `event`s until it ends with `close`.
 //!
 //! Each area lives in its own module and handles the operations named after it:
-//! `fetch`, `ws.*`, `fs.*`, and `invoke` and `events.*`, which reach the Rust code of the
+//! `fetch`, `ws.*`, `fs.*`, `proc.*` (processes), `sock.*` (unix sockets), and `invoke` and `events.*`, which reach the Rust code of the
 //! app's own crate (see [`commands`]). Operations that need GPUI itself, such as a file dialog,
 //! are queued as [`MainJob`]s for the window to run.
 
 pub mod commands;
 mod fetch;
 mod files;
+mod lines;
+mod process;
+mod socket;
 mod websocket;
 
 use std::cell::RefCell;
@@ -119,6 +122,8 @@ pub struct Io {
     pub main_jobs: Rc<RefCell<Vec<MainJob>>>,
     pub sockets: websocket::Sockets,
     pub files: files::Files,
+    pub processes: process::Processes,
+    pub unix_sockets: socket::Unix,
     /// The app's own Rust commands, and the events they push.
     commands: commands::Router,
 }
@@ -128,13 +133,16 @@ impl Io {
     pub fn new(bundle: Option<&str>, allow_files: &[String], commands: Commands) -> Self {
         let (sender, receiver) = unbounded();
         let sink = Sink { sender };
+        let files = files::Files::new(bundle, allow_files);
         Io {
             commands: commands::Router::new(commands, &sink),
             sink,
             receiver: RefCell::new(Some(receiver)),
             main_jobs: Rc::new(RefCell::new(Vec::new())),
             sockets: websocket::Sockets::default(),
-            files: files::Files::new(bundle, allow_files),
+            processes: process::Processes::default(),
+            unix_sockets: socket::Unix::new(files.directories().clone()),
+            files,
         }
     }
 
@@ -154,6 +162,8 @@ impl Io {
             "fetch" => fetch::fetch(&self.sink, call, args, bytes),
             op if op.starts_with("ws.") => self.sockets.request(&self.sink, op, call, args, bytes),
             op if op.starts_with("fs.") => self.files.request(&self.sink, &self.main_jobs, op, call, args, bytes),
+            op if op.starts_with("proc.") => self.processes.request(&self.sink, op, call, args, bytes),
+            op if op.starts_with("sock.") => self.unix_sockets.request(&self.sink, op, call, args, bytes),
             "invoke" | "events.listen" | "events.unlisten" => self.commands.request(&self.sink, op, call, args, bytes),
             _ => self.sink.reject(call, format!("svelte-gpui: unknown operation {op}")),
         }
@@ -161,9 +171,11 @@ impl Io {
 }
 
 impl Drop for Io {
-    /// Ends the sockets and watches the app left running. Their threads end on their own, and
-    /// what they still send has no receiver to reach.
+    /// Ends the sockets and watches the app left running, and kills its processes. Their
+    /// threads end on their own, and what they still send has no receiver to reach.
     fn drop(&mut self) {
+        self.processes.kill_all();
+        self.unix_sockets.close_all();
         self.sockets.close_all();
         self.files.stop_watches();
     }
