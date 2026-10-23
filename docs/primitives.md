@@ -402,6 +402,19 @@ Limits: an overlay inside another is drawn in place after its content, so it is 
 `overflow: "hidden"` on the content around it. The window's size is read when the overlay is laid out; an overlay
 inside a part of the window that did not redraw is not moved when the window is resized.
 
+## Window
+
+A window of its own (`g-window`): its children are drawn there instead of where it sits. It
+opens while it is mounted and closes when it is removed (`docs/window.md`).
+
+| Prop | Type | |
+|---|---|---|
+| `style` | `Style` | Lays out and paints the window's content. Without a `background` it is transparent. |
+| `title` | `string` | Read when it opens. |
+| `width`, `height` | `number` | The content's size when it opens. The default is 400 by 300. |
+| `appId` | `string` | The id window rules match. The app's own by default. |
+| `onclose` | `() => void` | The user or the compositor closed it. It stays closed until it is removed and mounted again. |
+
 ## Popover
 
 Content that floats next to a trigger: a menu, a date picker, a card of details. It is drawn above everything,

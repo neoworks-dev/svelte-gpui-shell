@@ -13,6 +13,7 @@ export { default as Tree } from "./Tree.svelte";
 export { default as Presence } from "./Presence.svelte";
 export { default as Canvas } from "./Canvas.svelte";
 export { default as Overlay } from "./Overlay.svelte";
+export { default as Window } from "./Window.svelte";
 export { default as Popover } from "./Popover.svelte";
 export { default as Tooltip } from "./Tooltip.svelte";
 export { default as Menu } from "./Menu.svelte";

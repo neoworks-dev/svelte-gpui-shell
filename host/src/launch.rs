@@ -16,6 +16,7 @@ use crate::errors;
 use crate::images::Images;
 use crate::io::Commands;
 use crate::runtime::{App as Svelte, Script};
+use crate::tree::ROOT;
 use crate::watch;
 use crate::window_control::WindowSettings;
 use crate::workbench::{ErrorOutput, Workbench};
@@ -169,30 +170,40 @@ pub fn run(options: Options) {
     gpui_platform::application().with_assets(assets::Assets).run(move |cx: &mut App| {
         cx.text_system().add_fonts(assets::fonts()).expect("fonts load");
         println!("malloc after the fonts: {:.1} MB in use", heap_megabytes().0);
+        let own_window = !settings.none;
         let opening = open_options(&options, settings, cx);
         let title = opening.titlebar.as_ref().and_then(|titlebar| titlebar.title.clone());
-        let window = cx.open_window(opening, |window, cx| {
-            cx.new(|cx| Workbench::new(svelte, images, options.elements.clone(), window, cx))
-        });
-        let window = window.unwrap();
-        window.update(cx, |workbench, _, _| workbench.send_errors_to(error_output)).ok();
-        // Wayland takes the title from the window, not from the options it opens with.
-        if let Some(title) = title {
-            window.update(cx, |_, window, _| window.set_window_title(&title)).ok();
+        let app_id = opening.app_id.clone();
+        let workbench = cx.new(|cx| Workbench::new(svelte, images, options.elements.clone(), app_id, cx));
+        workbench.update(cx, |workbench, _| workbench.send_errors_to(error_output));
+        if own_window {
+            let window = Workbench::open_window(&workbench, ROOT, opening, cx).expect("the app's window opens");
+            // Wayland takes the title from the window, not from the options it opens with.
+            if let Some(title) = title {
+                window.update(cx, |_, window, _| window.set_window_title(&title)).ok();
+            }
         }
         cx.activate(true);
         if options.watch && options.embedded.is_none() {
-            watch::reload_on_change(window, options.bundle.clone(), options.allow_files.clone(), cx);
+            watch::reload_on_change(workbench.clone(), options.bundle.clone(), options.allow_files.clone(), cx);
         }
 
         // The app's clock runs on display frames and timers (see `Workbench::schedule`).
         // This slow beat only picks up what finishes off the main thread, like images.
+        let beating = workbench.downgrade();
         cx.spawn(async move |cx| {
             loop {
                 cx.background_executor().timer(Duration::from_millis(100)).await;
-                let outcome =
-                    cx.update(|cx| window.update(cx, |workbench, window, cx| workbench.tick(false, window, cx)).ok());
-                if outcome.is_none() {
+                let gone = cx.update(|cx| match beating.upgrade() {
+                    Some(workbench) => {
+                        Workbench::in_primary_window(&workbench, cx, |workbench, window, cx| {
+                            workbench.tick(false, window, cx)
+                        });
+                        false
+                    }
+                    None => true,
+                });
+                if gone {
                     return;
                 }
             }
@@ -201,11 +212,14 @@ pub fn run(options: Options) {
 
         // Scripted clicks, one after another, for when nobody can click.
         if !steps.is_empty() {
+            let stepping = workbench.clone();
             cx.spawn(async move |cx| {
                 for step in steps {
                     cx.background_executor().timer(Duration::from_millis(900)).await;
                     cx.update(|cx| {
-                        window.update(cx, |workbench, window, cx| workbench.run_step(&step, window, cx)).ok();
+                        Workbench::in_primary_window(&stepping, cx, |workbench, window, cx| {
+                            workbench.run_step(&step, window, cx)
+                        });
                     });
                 }
             })
@@ -216,12 +230,10 @@ pub fn run(options: Options) {
             cx.spawn(async move |cx| {
                 cx.background_executor().timer(Duration::from_millis(milliseconds)).await;
                 cx.update(|cx| {
-                    window
-                        .update(cx, |workbench, _window, _cx| {
-                            workbench.print_summary(report, step_count);
-                            failed_in_run.store(workbench.steps_failed(step_count), Ordering::Relaxed);
-                        })
-                        .ok();
+                    workbench.update(cx, |workbench, _cx| {
+                        workbench.print_summary(report, step_count);
+                        failed_in_run.store(workbench.steps_failed(step_count), Ordering::Relaxed);
+                    });
                 });
                 cx.update(|cx| cx.quit());
             })

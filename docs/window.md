@@ -1,6 +1,6 @@
 # The window
 
-An app has one window. It opens it with options, reads what the window is like, and asks
+An app has a window of its own. It opens it with options, reads what the window is like, and asks
 things of it, all through `window` from `@neoworks/svelte-gpui`:
 
 ```ts
@@ -110,6 +110,30 @@ agree. A handler that throws is logged and counts as agreeing, so a bug cannot t
 While a promise is pending, further requests to close are ignored. `examples/demo` does this
 for the Files section's note: close the window with unsaved changes, and it asks first.
 
+## More windows
+
+`Window` from `@neoworks/svelte-gpui/ui` opens another window while it is mounted, and
+closes it when it is removed. Its children are drawn there, not where it sits. It is the
+same app, so state is shared between the windows as it is between any two components:
+
+```svelte
+{#if open}
+  <Window title="Inspector" width={320} height={480} onclose={() => (open = false)}>
+    <Text>{selected.name}</Text>
+  </Window>
+{/if}
+```
+
+`style` lays out and paints the window's content, and without a `background` the window
+is transparent. `title`, `width`, `height` and `appId` are read when it opens; `appId` is
+the app's own unless it is set. When the user closes it, `onclose` fires and it stays
+closed until the app removes it and mounts it again.
+
+`start(App, {}, { window: false })` opens no window of the app's own, for an app that
+draws only in its `Window`s. `window` above then has nothing to report.
+
+`examples/windows` has two windows sharing a count.
+
 ## What is not there
 
 GPUI 0.2.2 on Wayland does not support these, so the API leaves them out rather than
@@ -124,4 +148,4 @@ pretending:
   created, and GPUI has no call to change it.
 - **Making the window not resizable.** GPUI's `is_resizable` option is ignored on Linux.
 
-Several windows, native menus, notifications and a tray icon are separate features.
+Native menus, notifications and a tray icon are separate features.

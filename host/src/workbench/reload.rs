@@ -60,7 +60,6 @@ impl Workbench {
         self.stash_elements();
         self.interaction.reset();
         self.interaction.images.reset();
-        window.focus(&self.interaction.root_focus, cx);
         self.forget_old_state();
         self.listen_for_io(cx);
         if let Some(title) = self.svelte.window_settings.borrow().as_ref().and_then(|settings| settings.title.clone()) {

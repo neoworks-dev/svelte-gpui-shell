@@ -1,7 +1,8 @@
 //! Draws the host's tree with GPUI. Every element is one of a fixed set of
 //! primitives (`g-view`, `g-text`, `g-button`, `g-input`, `g-scroll`, `g-image`,
 //! `g-icon`, `g-canvas`, `g-overlay`, `g-element`), styled by the object the app passed and drawn as a `div`.
-//! An overlay is drawn in a layer above the rest (`overlay.rs`).
+//! An overlay is drawn in a layer above the rest (`overlay.rs`). A `g-window` is drawn in a window
+//! of its own (`workbench/windows.rs`), and the window around it draws nothing for it.
 //!
 //! Input goes the other way. Which events an element listens for decides which
 //! GPUI handlers it gets, and each handler reports to the app by node id.
@@ -24,8 +25,8 @@ use std::time::Instant;
 
 use gpui::{
     AnyElement, AnyView, Bounds, Context, DragMoveEvent, Entity, ExternalPaths, FocusHandle, IntoElement,
-    MouseMoveEvent, MouseUpEvent, Render, Rgba, ScrollHandle, WeakEntity, Window, canvas, div, prelude::*, px,
-    relative,
+    MouseMoveEvent, MouseUpEvent, Render, Rgba, ScrollHandle, WeakEntity, Window, WindowId, canvas, div, prelude::*,
+    px, relative,
 };
 
 use crate::elements::Instances;
@@ -50,7 +51,10 @@ use text::{DEFAULT_FONT_SIZE, DEFAULT_TEXT, collapse, text_box, transform};
 /// What lives between frames: the handles GPUI needs to keep focus and scroll
 /// positions, what the last layout measured, and the images being loaded.
 pub struct Interaction {
-    pub root_focus: FocusHandle,
+    /// What holds focus in each window when no element does, by the window's top node.
+    pub window_focus: RefCell<HashMap<NodeId, FocusHandle>>,
+    /// The top node each open window draws, by the window.
+    pub window_roots: RefCell<HashMap<WindowId, NodeId>>,
     pub focus: RefCell<HashMap<NodeId, FocusHandle>>,
     pub scroll: RefCell<HashMap<NodeId, ScrollHandle>>,
     /// Where each measured element came out in the window.
@@ -89,7 +93,8 @@ pub struct Interaction {
 impl Interaction {
     pub fn new(images: Images, fields: Rc<RefCell<HashMap<NodeId, Field>>>, cx: &mut Context<Workbench>) -> Self {
         Interaction {
-            root_focus: cx.focus_handle(),
+            window_focus: RefCell::new(HashMap::new()),
+            window_roots: RefCell::new(HashMap::new()),
             focus: RefCell::new(HashMap::new()),
             scroll: RefCell::new(HashMap::new()),
             fields,
@@ -133,6 +138,12 @@ impl Interaction {
 
     fn focus_handle(&self, id: NodeId, cx: &mut Context<Workbench>) -> FocusHandle {
         self.focus.borrow_mut().entry(id).or_insert_with(|| cx.focus_handle()).clone()
+    }
+
+    /// The focus handle a window holds when no element has focus.
+    pub fn window_focus_of(&self, window: &Window) -> Option<FocusHandle> {
+        let root = *self.window_roots.borrow().get(&window.window_handle().window_id())?;
+        self.window_focus.borrow().get(&root).cloned()
     }
 
     fn scroll_handle(&self, id: NodeId) -> ScrollHandle {
@@ -221,18 +232,25 @@ impl<'a> Painter<'a> {
         computed
     }
 
-    /// The whole document: the root's children, filling the window.
-    pub fn document(&self, cx: &mut Context<Workbench>) -> AnyElement {
-        let mut element = div()
-            .size_full()
-            .flex()
-            .flex_col()
-            .bg(DEFAULT_BACKGROUND)
+    /// What one window shows: the children of `root`, filling it. The app's own window draws
+    /// the tree's root on the default background; a `g-window` is laid out and painted by its
+    /// own style, and is transparent without one.
+    pub fn document(&self, root: NodeId, cx: &mut Context<Workbench>) -> AnyElement {
+        let focus = self.interaction.window_focus.borrow().get(&root).cloned();
+        let mut element = div().size_full().flex().flex_col();
+        element = match root {
+            ROOT => element.bg(DEFAULT_BACKGROUND),
+            _ => style::apply(element, &self.computed(root).style),
+        };
+        element = element
             .text_color(DEFAULT_TEXT)
             .font_family(SANS)
             .text_size(px(DEFAULT_FONT_SIZE))
-            .line_height(relative(1.4))
-            .track_focus(&self.interaction.root_focus)
+            .line_height(relative(1.4));
+        if let Some(focus) = &focus {
+            element = element.track_focus(focus);
+        }
+        let mut element = element
             .on_key_down(cx.listener(|workbench, event, window, cx| {
                 // A key the host or the app used must not also be typed by the input method.
                 if workbench.key(event, window, cx) {
@@ -258,7 +276,7 @@ impl<'a> Painter<'a> {
             .child(external_drag_ended(cx))
             .child(press_ends_focus(cx));
         let inherited = Inherited::root();
-        for child in self.children(ROOT, &inherited, false, cx) {
+        for child in self.children(root, &inherited, false, cx) {
             element = element.child(child);
         }
         element.into_any_element()
@@ -385,6 +403,9 @@ impl<'a> Painter<'a> {
         if computed.style.hidden == Some(true) {
             return None;
         }
+        if primitive == Primitive::Window {
+            return None;
+        }
         if primitive == Primitive::Overlay {
             // An overlay is drawn in a layer of its own, never as a cached view in the flow.
             return self.overlay_element(id, node, &computed, inherited, cx);
@@ -414,7 +435,7 @@ impl<'a> Painter<'a> {
             Primitive::Input => self.field_content(element, id, node, style, &inherited, cx),
             Primitive::Canvas => self.canvas_content(element, id, style),
             Primitive::Element => self.element_content(element, id, node),
-            Primitive::View | Primitive::Button | Primitive::Scroll | Primitive::Overlay => {
+            Primitive::View | Primitive::Button | Primitive::Scroll | Primitive::Overlay | Primitive::Window => {
                 let row = style.row == Some(true);
                 element.children(self.children(id, &inherited, row, cx))
             }

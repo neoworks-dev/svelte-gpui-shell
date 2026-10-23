@@ -1,4 +1,5 @@
-//! The window's one GPUI entity: it owns the app, hands input to it, and draws what it built.
+//! The app's one GPUI entity: it owns the app, hands input to it, and draws what it built in
+//! each of its windows (`windows.rs`).
 
 mod clock;
 mod editing;
@@ -14,20 +15,23 @@ mod reports;
 mod script;
 mod scrolling;
 mod windowing;
+mod windows;
 
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-use gpui::{Context, IntoElement, Render, Window, div, point, prelude::*, px};
+use gpui::{Context, Window, point, px};
 
 use crate::diagnostics::Stats;
 use crate::elements::Elements;
 use crate::errors::AppError;
 use crate::images::Images;
 use crate::render::{self, Interaction, Painter};
+
 use crate::runtime::{App as Svelte, Outcome};
 use crate::tree::{Command, NodeId, Tree};
 use crate::window_control::WindowState;
+pub use windows::WindowView;
 
 pub use overlay::ErrorOutput;
 
@@ -76,18 +80,20 @@ pub struct Workbench {
     external_drag: file_drop::ExternalDrag,
     /// The scripted steps that have run, and which of them failed.
     steps: script::StepLog,
+    /// The windows the app is drawn in.
+    windows: windows::Windows,
 }
 
 impl Workbench {
+    /// The workbench for an app, with no window yet (see [`Workbench::open_window`]).
     pub fn new(
         svelte: Svelte,
         images: Images,
         elements: Elements,
-        window: &mut Window,
+        app_id: Option<String>,
         cx: &mut Context<Self>,
     ) -> Self {
         let interaction = Interaction::new(images, svelte.fields.clone(), cx);
-        window.focus(&interaction.root_focus, cx);
         elements.attach(svelte.io.sink());
         let mut workbench = Workbench {
             svelte,
@@ -114,9 +120,10 @@ impl Workbench {
             timer_due: None,
             external_drag: Default::default(),
             steps: Default::default(),
+            windows: windows::Windows { app_id, ..Default::default() },
         };
         workbench.listen_for_io(cx);
-        workbench.watch_window(window, cx);
+        workbench.sync_windows(cx);
         workbench
     }
 
@@ -292,16 +299,28 @@ impl Workbench {
                 true
             }
             Command::Focus(id) => {
-                let handles = self.interaction.focus.borrow();
-                let Some(handle) = handles.get(id) else {
+                let handle = self.interaction.focus.borrow().get(id).cloned();
+                let (Some(handle), Some(target)) = (handle, self.window_of(*id)) else {
                     return false;
                 };
-                window.focus(handle, cx);
-                true
+                Self::in_window(target, window, cx, |window, cx| window.focus(&handle, cx)).is_some()
             }
             Command::Call { .. } => self.carry_out_call(command, cx),
             Command::Blur(id) => {
-                self.blur_node(*id, window, cx);
+                let Some(target) = self.window_of(*id) else {
+                    return true;
+                };
+                let focus = self.interaction.focus.borrow().get(id).cloned();
+                let fallback = self.windows.open.iter().find(|open| open.handle.window_id() == target.window_id());
+                let fallback =
+                    fallback.and_then(|open| self.interaction.window_focus.borrow().get(&open.root).cloned());
+                Self::in_window(target, window, cx, |window, cx| {
+                    if let (Some(focus), Some(fallback)) = (focus, fallback)
+                        && focus.is_focused(window)
+                    {
+                        window.focus(&fallback, cx);
+                    }
+                });
                 true
             }
             Command::ScrollTo(id, left, top) => {
@@ -314,51 +333,5 @@ impl Workbench {
                 true
             }
         }
-    }
-}
-
-impl Render for Workbench {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let started = Instant::now();
-        let viewport = window.viewport_size();
-        self.interaction.viewport.set((f32::from(viewport.width), f32::from(viewport.height)));
-        self.interaction.scale.set(window.scale_factor());
-        let gone: Vec<_> = std::mem::take(&mut self.svelte.tree.borrow_mut().dropped_canvases);
-        for surface in gone {
-            for image in surface.borrow_mut().release() {
-                window.drop_image(image).ok();
-            }
-        }
-        let tree = self.svelte.tree.clone();
-        let tree = tree.borrow();
-        let painter = Painter::new(&tree, &self.interaction, None);
-        let document = painter.document(cx);
-        let document = match self.error_overlay(window, cx) {
-            Some(overlay) => div().size_full().relative().child(document).child(overlay).into_any_element(),
-            None => document,
-        };
-        let wanted = self.frame_target;
-        if wanted > 0 && self.frame_times.len() < wanted {
-            self.frame_times.push(Instant::now());
-            window.request_animation_frame();
-        }
-        if self.interaction.animating.replace(false) {
-            window.request_animation_frame();
-        }
-        // What this frame laid out is reported, and animation frames run, when the
-        // display next draws.
-        self.tick_next_frame(window, cx);
-        let elapsed = started.elapsed().as_secs_f64();
-        {
-            let mut frames = self.svelte.frames.borrow_mut();
-            frames.push_back((Instant::now(), elapsed * 1000.0));
-            if frames.len() > 1000 {
-                frames.pop_front();
-            }
-        }
-        self.stats.renders += 1;
-        self.stats.render_seconds += elapsed;
-        self.stats.worst_render_seconds = self.stats.worst_render_seconds.max(elapsed);
-        document
     }
 }

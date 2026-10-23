@@ -43,17 +43,12 @@ impl Workbench {
         }
     }
 
-    /// Takes focus away from an element, if it has it.
-    pub fn blur_node(&self, id: NodeId, window: &mut Window, cx: &mut App) {
-        if self.focused_node(window) == Some(id) {
-            self.blur_focused(window, cx);
-        }
-    }
-
     /// Takes focus from whatever has it. Focus goes to the window itself, so no element of the
     /// app has it, as when a press lands on empty space.
     pub fn blur_focused(&self, window: &mut Window, cx: &mut App) {
-        window.focus(&self.interaction.root_focus, cx);
+        if let Some(focus) = self.interaction.window_focus_of(window) {
+            window.focus(&focus, cx);
+        }
     }
 
     /// What a press on `id` does to focus, for a press the window did not already settle.

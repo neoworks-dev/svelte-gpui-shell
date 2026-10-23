@@ -67,7 +67,7 @@ nothing the browser provides exists.
 - **Tab navigation between elements, and accessibility** (screen readers). These are
   not built yet.
 - **Text selection outside fields.** `Text` cannot be selected or copied.
-- **Multiple windows and native menus.** The host opens one window.
+- **Native menus.** More windows are `Window` components, not `window.open`.
 
 ## Why primitives and style objects
 

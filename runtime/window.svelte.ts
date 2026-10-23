@@ -43,7 +43,7 @@ function request(operation: string, args: Record<string, unknown> = {}): void {
 }
 
 /** Hands the host the options the app opens its window with. Called by `start`. */
-export function declareWindow(options: WindowOptions): void {
+export function declareWindow(options: WindowOptions | { none: true }): void {
   host().windowOptions(JSON.stringify(options));
 }
 

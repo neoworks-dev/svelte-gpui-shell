@@ -10,7 +10,7 @@ use crate::tree::{Kind, NodeId};
 impl Workbench {
     /// Sends `blur` and `focus` when focus moved since the last tick.
     pub(super) fn report_focus(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let now = self.focused_node(window);
+        let now = self.focused_anywhere(window, cx);
         if now == self.focused {
             return;
         }

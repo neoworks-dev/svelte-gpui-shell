@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use futures::StreamExt;
 use futures::channel::mpsc::{UnboundedReceiver, unbounded};
-use gpui::{App, WindowHandle};
+use gpui::{App, Entity};
 use notify::event::EventKind;
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 
@@ -75,8 +75,8 @@ fn touches(event: &notify::Event, names: &[PathBuf]) -> bool {
     changed && event.paths.iter().any(|path| names.iter().any(|name| path.file_name() == Some(name.as_os_str())))
 }
 
-/// Starts the bundle again in `window` each time a build writes it, until the window is gone.
-pub fn reload_on_change(window: WindowHandle<Workbench>, bundle: PathBuf, allow_files: Vec<String>, cx: &mut App) {
+/// Starts the bundle again each time a build writes it, in the windows it already has.
+pub fn reload_on_change(workbench: Entity<Workbench>, bundle: PathBuf, allow_files: Vec<String>, cx: &mut App) {
     let watch = match BundleWatch::start(&bundle) {
         Ok(watch) => watch,
         Err(error) => {
@@ -91,12 +91,11 @@ pub fn reload_on_change(window: WindowHandle<Workbench>, bundle: PathBuf, allow_
         let _watching = watcher;
         let path = bundle.to_string_lossy().to_string();
         while changes.next().await.is_some() {
-            let reloaded = cx.update(|cx| {
-                window.update(cx, |workbench, window, cx| workbench.bundle_changed(&path, &allow_files, window, cx))
+            cx.update(|cx| {
+                Workbench::in_primary_window(&workbench, cx, |workbench, window, cx| {
+                    workbench.bundle_changed(&path, &allow_files, window, cx)
+                })
             });
-            if reloaded.is_err() {
-                return;
-            }
         }
     })
     .detach();

@@ -50,6 +50,7 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Canvas` | `style ondown onmove onup onhover onwheel onlayout` | `begin(x,y,pen) lineTo end line fillRect fillCircle clear` |
 | `Presence` | `in out style`, each a transition or `[fn, params]` | |
 | `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
+| `Window` | `style title width height appId onclose`; its children are drawn in a window of their own, open while it is mounted | |
 
 `View` is a column. `Button` and `Input` are rows. Text properties (`color`,
 `fontSize`, `fontWeight`, `fontFamily`, …) are inherited by children.
@@ -209,6 +210,8 @@ with `scripts/shot.sh`, so an error shows up in the screenshot.
 `import { window } from "@neoworks/svelte-gpui"` (`docs/window.md`).
 
 - **Open it:** `start(App, {}, { window: { title, width, height, minWidth, minHeight } })`.
+  `window: false` opens none, for an app that draws only in `Window`s.
+- **More windows:** `<Window>` opens one while mounted; state is shared, it is one app.
   `--width` and `--height` override the size.
 - **Read it,** reactively: `window.size` (`{ width, height }`), `scale`, `focused`,
   `maximized`, `fullscreen`.

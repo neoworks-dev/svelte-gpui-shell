@@ -18,7 +18,7 @@ impl Workbench {
         let milliseconds = self.svelte.started.elapsed().as_secs_f64() * 1000.0;
         let wake = self.svelte.pump(milliseconds, frame);
         self.run_commands(window, cx);
-        self.run_window_commands(window);
+        self.run_window_commands(window, cx);
         self.report_errors(cx);
         self.run_main_jobs(cx);
         self.report_focus(window, cx);
@@ -26,10 +26,11 @@ impl Workbench {
         self.report_scroll(cx);
         self.report_sizes(cx);
         self.report_images(cx);
-        self.report_window(window);
+        self.report_window(window, cx);
         let version = self.svelte.tree.borrow().version;
         if version != self.seen_version {
             self.seen_version = version;
+            self.sync_windows(cx);
             self.flush_dirty(cx);
             cx.notify();
         }

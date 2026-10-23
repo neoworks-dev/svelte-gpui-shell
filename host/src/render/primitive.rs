@@ -19,6 +19,8 @@ pub enum Primitive {
     Overlay,
     /// A view the app's own crate draws (`Elements`).
     Element,
+    /// A window of its own: its children are drawn there, not where it sits in the tree.
+    Window,
 }
 
 impl Primitive {
@@ -34,6 +36,7 @@ impl Primitive {
             "g-canvas" => Primitive::Canvas,
             "g-overlay" => Primitive::Overlay,
             "g-element" => Primitive::Element,
+            "g-window" => Primitive::Window,
             _ => return None,
         })
     }

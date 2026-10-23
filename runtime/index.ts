@@ -35,8 +35,11 @@ export type {
 export interface StartOptions {
   /** Limits the files the app may reach. Without it, everything is allowed. */
   files?: FilesLimit;
-  /** How the window opens. The host's `--width` and `--height` flags override its size. */
-  window?: WindowOptions;
+  /**
+   * How the window opens. The host's `--width` and `--height` flags override its size.
+   * `false` opens no window of the app's own: it draws only in its `Window`s.
+   */
+  window?: WindowOptions | false;
 }
 
 /**
@@ -49,7 +52,9 @@ export function start(Component: unknown, props: Record<string, unknown> = {}, o
   if (options.files !== undefined) {
     limitFiles(options.files);
   }
-  if (options.window !== undefined) {
+  if (options.window === false) {
+    declareWindow({ none: true });
+  } else if (options.window !== undefined) {
     declareWindow(options.window);
   }
   install();

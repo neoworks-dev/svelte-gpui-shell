@@ -8,6 +8,8 @@ use serde_json::Value;
 /// the app leaves out stays as the host's default, and the host's own flags override these.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct WindowSettings {
+    /// The app asked for no window of its own, with `window: false`; it draws only in `g-window`s.
+    pub none: bool,
     pub title: Option<String>,
     pub width: Option<f32>,
     pub height: Option<f32>,
@@ -20,6 +22,7 @@ impl WindowSettings {
     pub fn from_json(value: &Value) -> Self {
         let number = |name: &str| value[name].as_f64().filter(|found| *found > 0.0).map(|found| found as f32);
         WindowSettings {
+            none: value["none"].as_bool().unwrap_or(false),
             title: value["title"].as_str().map(str::to_string),
             width: number("width"),
             height: number("height"),

@@ -1,8 +1,9 @@
-//! The window itself: what the app asks of it, what it reports back, and whether it may close.
+//! The app's own window: what the app asks of it, what it reports back, and whether it may close.
 
-use gpui::{Context, Window};
+use gpui::{App, Context, Window, WindowHandle};
 
-use super::Workbench;
+use super::{WindowView, Workbench};
+use crate::tree::ROOT;
 use crate::window_control::{WindowCommand, WindowState};
 
 impl Workbench {
@@ -19,9 +20,19 @@ impl Workbench {
         }
     }
 
-    /// Tells the app about the window when anything it can read changed since the last time.
-    pub(super) fn report_window(&mut self, window: &Window) {
-        let state = Self::window_state(window);
+    /// The app's own window, unless it opened without one.
+    fn own_window(&self) -> Option<WindowHandle<WindowView>> {
+        self.windows.open.iter().find(|open| open.root == ROOT).map(|open| open.handle)
+    }
+
+    /// Tells the app about its window when anything it can read changed since the last time.
+    pub(super) fn report_window(&mut self, current: &mut Window, cx: &mut App) {
+        let Some(own) = self.own_window() else {
+            return;
+        };
+        let Some(state) = Self::in_window(own, current, cx, |window, _| Self::window_state(window)) else {
+            return;
+        };
         if self.reported_window == Some(state) {
             return;
         }
@@ -29,9 +40,16 @@ impl Workbench {
         self.svelte.window(&state);
     }
 
-    /// Carries out what the app asked of the window since the last tick.
-    pub(super) fn run_window_commands(&mut self, window: &mut Window) {
+    /// Carries out what the app asked of its window since the last tick.
+    pub(super) fn run_window_commands(&mut self, current: &mut Window, cx: &mut App) {
         let commands = std::mem::take(&mut *self.svelte.window_commands.borrow_mut());
+        let Some(own) = self.own_window() else {
+            return;
+        };
+        Self::in_window(own, current, cx, |window, _| Self::carry_out_window_commands(commands, window));
+    }
+
+    fn carry_out_window_commands(commands: Vec<WindowCommand>, window: &mut Window) {
         for command in commands {
             match command {
                 WindowCommand::Title(title) => window.set_window_title(&title),
