@@ -6,6 +6,7 @@ See README.md. svelte-gpui is its own project; Grove is one app that may use it.
 svelte-gpui-shell is svelte-gpui for Wayland shells. It builds against the GPUI fork in
 `../gpui` (branch `shell`: upstream Zed plus the layer-shell PRs it merges), not crates.io.
 Fixes that are not shell-specific belong in svelte-gpui first (remote `svelte-gpui`).
+The path is relative, so worktrees need `.worktrees/gpui` as a symlink to `../../gpui`.
 
 - Apps are built from primitives (`runtime/ui/*.svelte`), each rendering one host
   tag (`g-view`, `g-text`, …) that `host/src/render/` draws. There is no HTML and
