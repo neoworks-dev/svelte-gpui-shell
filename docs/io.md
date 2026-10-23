@@ -252,7 +252,7 @@ const server = unixSockets.serve(`${runtime}/my-app.sock`, async (request) => {
 | `request(path, data, { timeout?, halfClose? })` | Connects, sends `data` (text or bytes), reads until the server closes, and resolves with what it sent as text. `timeout` is in ms and defaults to 30000. After sending, the writing end is closed so the server sees the request end; `halfClose: false` leaves it open for servers that dislike that. |
 | `requestBytes(path, data, options)` | The same, resolving with a `Uint8Array`. |
 | `connect(path, { onOpen?, onLine?, onClose?, onError? })` | A connection handle, at once. `onLine(line)` is called per line as it arrives, split as for processes. |
-| `serve(path, handler, { framing?, onError? })` | A server handle, at once. |
+| `serve(path, handler, { framing?, onPeer?, onPeerGone?, onError? })` | A server handle, at once. |
 
 A connection handle has `write(data)` (queued, and sent in order once connected; throws after the
 connection has ended), `close()` (after what was queued is sent) and `closed`, a promise that settles
@@ -268,7 +268,18 @@ without an answer and calls `onError`. `framing` says what a request is:
 - `"line"`: every line is a request, answered in order with a line (a newline is added if the answer
   lacks one), and the connection stays open until the peer leaves. `nc -U` and `socat` work with it.
 
-A server handle has `path`, `ready` (a promise that settles once the server listens) and `close()`,
+The handler's second argument is the client that sent the request, a `peer`. A server can write to a
+client at any time, not only as an answer, which is how a control socket delivers topics a client
+subscribed to: keep the peer from a `"subscribe"` request and call `peer.write("topic {...}\n")`
+when something happens. Nothing is added to what is written, so end a line with `\n`, and a write
+is in order with the earlier ones and with answers, which never mix their bytes with it. A peer has
+`id`, `write(data)` (text or bytes; throws once the client has left), and `close()`, which ends the
+connection after what was queued. `onPeer(peer)` is called when a client connects, before its first
+request, and `onPeerGone(peer)` when it has gone, whichever side ended it. With `"eof"` framing the
+answer ends the connection, so pushing is for `"line"`.
+
+A server handle has `path`, `ready` (a promise that settles once the server listens), `peers` (the
+clients connected now), `broadcast(data)` (writes to each of them) and `close()`,
 which stops listening, ends its connections and removes the socket file. Servers and connections left
 open when the app quits or reloads are closed, and their files removed.
 

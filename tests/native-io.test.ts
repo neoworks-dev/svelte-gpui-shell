@@ -161,8 +161,9 @@ describe("unixSockets", () => {
     expect(sent[0].args).toEqual({ path: "/s", framing: "eof" });
     answer(call, "event", { type: "listening" });
     await server.ready;
-    answer(call, "event", { type: "request", id: 7, text: "ping" });
-    answer(call, "event", { type: "request", id: 8, text: "other" });
+    answer(call, "event", { type: "peer", peer: 1 });
+    answer(call, "event", { type: "request", id: 7, peer: 1, text: "ping" });
+    answer(call, "event", { type: "request", id: 8, peer: 1, text: "other" });
     await flush();
     const replies = sent.filter((request) => request.op === "sock.reply");
     expect(replies.map((reply) => [reply.args, text(reply.bytes)])).toEqual([
@@ -177,10 +178,58 @@ describe("unixSockets", () => {
   test("serve tells the host a handler failed, and reports it", async () => {
     const problems: string[] = [];
     unixSockets.serve("/s", () => { throw new Error("boom"); }, { framing: "line", onError: (error) => problems.push(error.message) });
-    answer(sent[0].call, "event", { type: "request", id: 1, text: "x" });
+    answer(sent[0].call, "event", { type: "peer", peer: 1 });
+    answer(sent[0].call, "event", { type: "request", id: 1, peer: 1, text: "x" });
     await flush();
     expect(problems).toEqual(["boom"]);
     expect(sent[1]).toMatchObject({ op: "sock.reply", args: { request: 1, failed: true } });
+  });
+});
+
+describe("unixSockets.serve pushing to clients", () => {
+  test("a peer is handed to the handler and can be written to later, in order", async () => {
+    const seen: number[] = [];
+    let kept: any;
+    const server = unixSockets.serve("/s", (_request, peer) => { seen.push(peer.id); kept = peer; }, { framing: "line" });
+    const { call } = sent[0];
+    answer(call, "event", { type: "peer", peer: 4 });
+    answer(call, "event", { type: "request", id: 1, peer: 4, text: "subscribe" });
+    await flush();
+    expect(seen).toEqual([4]);
+    kept.write("one\n");
+    kept.write(new Uint8Array([0x74, 0x77, 0x6f, 0x0a]));
+    const pushes = sent.filter((request) => request.op === "sock.push");
+    expect(pushes.map((push) => [push.args, text(push.bytes)])).toEqual([
+      [{ server: call, peer: 4 }, "one\n"],
+      [{ server: call, peer: 4 }, "two\n"],
+    ]);
+    expect(server.peers.map((peer) => peer.id)).toEqual([4]);
+  });
+
+  test("onPeer and onPeerGone report clients, and a gone peer refuses writes", () => {
+    const events: string[] = [];
+    let kept: any;
+    const server = unixSockets.serve("/s", () => {}, {
+      framing: "line",
+      onPeer: (peer) => { kept = peer; events.push(`peer ${peer.id}`); },
+      onPeerGone: (peer) => events.push(`gone ${peer.id}`),
+    });
+    answer(sent[0].call, "event", { type: "peer", peer: 2 });
+    answer(sent[0].call, "event", { type: "gone", peer: 2 });
+    expect(events).toEqual(["peer 2", "gone 2"]);
+    expect(server.peers).toEqual([]);
+    expect(() => kept.write("late")).toThrow("has left");
+  });
+
+  test("broadcast writes to every client, and close hangs one up", () => {
+    const server = unixSockets.serve("/s", () => {}, { framing: "line" });
+    const { call } = sent[0];
+    answer(call, "event", { type: "peer", peer: 1 });
+    answer(call, "event", { type: "peer", peer: 2 });
+    server.broadcast("hello\n");
+    expect(sent.filter((request) => request.op === "sock.push").map((push) => push.args.peer)).toEqual([1, 2]);
+    server.peers[0].close();
+    expect(sent.at(-1)).toMatchObject({ op: "sock.hangup", args: { server: call, peer: 1 } });
   });
 });
 

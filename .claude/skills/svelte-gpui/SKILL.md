@@ -125,7 +125,10 @@ A theme is plain data: exported `Style` objects spread together, or combined wit
 - **`unixSockets`** talks to local daemons: `request(path, data)` (writes, reads to EOF, resolves
   text; `requestBytes` for bytes), `connect(path, { onLine, onClose, onOpen, onError })` with
   `write`/`close`/`closed`, and `serve(path, handler, { framing })` where the handler gets each
-  request's text and returns the answer (or a promise); `framing` is `"eof"` or `"line"`. Errors
+  request's text and its `peer` and returns the answer (or a promise); `framing` is `"eof"` or `"line"`.
+  A server can push to a client whenever it likes: keep the `peer` and call `peer.write(data)`
+  (also `peer.close()`, `server.peers`, `server.broadcast(data)`, options `onPeer`, `onPeerGone`);
+  nothing is appended, so end lines with `\n`. Errors
   are `SocketError`. Unlimited unless `start(App, {}, { sockets: { allow: ["$runtime/hypr"] } })`.
   `files.paths().runtime` is `XDG_RUNTIME_DIR`.
 
