@@ -62,6 +62,16 @@ export interface SocketConnection {
 /** What a server's handler returns: the answer, written back to the peer. Nothing writes nothing. */
 export type ServeAnswer = string | Uint8Array | void;
 
+/** A client connected to a server of the app's. The app can write to it whenever it likes. */
+export interface SocketPeer {
+  /** Tells clients of one server apart. */
+  readonly id: number;
+  /** Queues text or bytes to send, in order with earlier writes. Throws once the client has left. Nothing is added to it: end a line with `\n` yourself. */
+  write(data: string | Uint8Array): void;
+  /** Ends the connection after what was queued has been sent. */
+  close(): void;
+}
+
 export interface ServeOptions {
   /**
    * How requests are delimited. `"eof"` (the default): a request is everything the peer sends
@@ -70,12 +80,20 @@ export interface ServeOptions {
    * if the answer lacks one), and the connection stays open until the peer leaves.
    */
   framing?: "eof" | "line";
+  /** Called when a client connects, before its first request. Keep the peer to write to it later. */
+  onPeer?(peer: SocketPeer): void;
+  /** Called when a client has gone, whichever side ended the connection. Its `write` throws from here on. */
+  onPeerGone?(peer: SocketPeer): void;
   /** Called when the server cannot start or fails. Defaults to `console.error`. */
   onError?(error: SocketError): void;
 }
 
 export interface SocketServer {
   readonly path: string;
+  /** The clients connected now. */
+  readonly peers: readonly SocketPeer[];
+  /** Writes to every client connected now. */
+  broadcast(data: string | Uint8Array): void;
   /** Settles once the server listens, or rejects if it could not start. */
   readonly ready: Promise<void>;
   /** Stops listening, ends the connections and removes the socket file. */
@@ -182,7 +200,11 @@ export const unixSockets = {
    * each request's text and returns the answer, or a promise of it. A handler that throws or
    * rejects ends that connection without an answer.
    */
-  serve(path: string, handler: (request: string) => ServeAnswer | Promise<ServeAnswer>, options: ServeOptions = {}): SocketServer {
+  serve(
+    path: string,
+    handler: (request: string, peer: SocketPeer) => ServeAnswer | Promise<ServeAnswer>,
+    options: ServeOptions = {},
+  ): SocketServer {
     let settle: { resolve(): void; reject(error: SocketError): void };
     const ready = new Promise<void>((resolve, reject) => {
       settle = { resolve, reject };
@@ -190,23 +212,55 @@ export const unixSockets = {
     ready.catch(() => {});
     const report = options.onError ?? ((problem: SocketError) => console.error(problem.message));
     let over = false;
-    const answer = async (id: number, text: string): Promise<void> => {
+    let server = 0;
+    // A peer's `write` throws once its client has gone; `gone` is what it checks.
+    const clients = new Map<number, { peer: SocketPeer; gone: boolean }>();
+    const meet = (id: number): SocketPeer => {
+      const client = { gone: false } as { peer: SocketPeer; gone: boolean };
+      client.peer = {
+        id,
+        write(data) {
+          if (client.gone) {
+            throw new SocketError("Other", `the client of ${path} has left`);
+          }
+          call("sock.push", { server, peer: id }, inputBuffer(data)).catch(() => {});
+        },
+        close() {
+          if (!client.gone) {
+            call("sock.hangup", { server, peer: id }).catch(() => {});
+          }
+        },
+      };
+      clients.set(id, client);
+      return client.peer;
+    };
+    const answer = async (id: number, peer: SocketPeer, text: string): Promise<void> => {
       let reply: ArrayBuffer | undefined;
       try {
-        const result = await handler(text);
+        const result = await handler(text, peer);
         reply = inputBuffer(result === undefined ? "" : result);
       } catch (error) {
         report(failure(error));
       }
       call("sock.reply", { request: id, failed: reply === undefined }, reply).catch(() => {});
     };
-    const server = stream("sock.serve", { path, framing: options.framing ?? "eof" }, {
+    server = stream("sock.serve", { path, framing: options.framing ?? "eof" }, {
       event: (reply) => {
         const event = reply.json;
         if (event.type === "listening") {
           settle.resolve();
+        } else if (event.type === "peer") {
+          const peer = meet(event.peer);
+          options.onPeer?.(peer);
+        } else if (event.type === "gone") {
+          const client = clients.get(event.peer);
+          clients.delete(event.peer);
+          if (client !== undefined) {
+            client.gone = true;
+            options.onPeerGone?.(client.peer);
+          }
         } else if (event.type === "request") {
-          answer(event.id, event.text);
+          answer(event.id, clients.get(event.peer)!.peer, event.text);
         } else {
           report(new SocketError("Other", event.message));
         }
@@ -225,6 +279,14 @@ export const unixSockets = {
     return {
       path,
       ready,
+      get peers() {
+        return [...clients.values()].map((client) => client.peer);
+      },
+      broadcast(data) {
+        for (const { peer } of clients.values()) {
+          peer.write(data);
+        }
+      },
       close() {
         if (!over) {
           over = true;

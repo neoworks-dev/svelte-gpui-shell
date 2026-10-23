@@ -323,11 +323,22 @@ impl Processes {
                 .and_then(|spec| processes.check(&spec.argv[0]).map(|_| spec))
                 .and_then(|spec| launch(&spec, true, &process));
             match outcome {
-                Ok(child) => follow(&sink, call, child, &process, receiver),
+                Ok(child) => follow(&sink, call, child, &process, receiver, args["binaryStdout"] == true),
                 Err(error) => sink.reject_with_code(call, error.code, error.message),
             }
             processes.running().remove(&call);
         });
+    }
+}
+
+/// Calls `deliver` with each chunk a pipe produces, until it closes.
+fn for_each_chunk(mut pipe: impl Read, mut deliver: impl FnMut(Vec<u8>)) {
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        match pipe.read(&mut buffer) {
+            Ok(0) | Err(_) => return,
+            Ok(length) => deliver(buffer[..length].to_vec()),
+        }
     }
 }
 
@@ -363,8 +374,10 @@ fn launch(spec: &Spec, piped_input: bool, process: &Process) -> Result<Child, Pr
     Ok(child)
 }
 
-/// Streams a process's lines until it has exited, then closes the call.
-fn follow(sink: &Sink, call: u64, mut child: Child, process: &Process, input: Receiver<Input>) {
+/// Streams a process's output until it has exited, then closes the call. Lines of text, except
+/// for standard output when `binary_stdout`: that goes out as the chunks the program wrote, as
+/// events of type `stdoutBytes` carrying the bytes.
+fn follow(sink: &Sink, call: u64, mut child: Child, process: &Process, input: Receiver<Input>, binary_stdout: bool) {
     if let Some(mut pipe) = child.stdin.take() {
         std::thread::spawn(move || {
             while let Ok(Input::Data(data)) = input.recv() {
@@ -385,7 +398,11 @@ fn follow(sink: &Sink, call: u64, mut child: Child, process: &Process, input: Re
         open += 1;
         let (sink, finished) = (sink.clone(), finished.clone());
         std::thread::spawn(move || {
-            for_each_line(pipe, |line| sink.event(call, json!({ "type": kind, "line": line }), None));
+            if binary_stdout && kind == "stdout" {
+                for_each_chunk(pipe, |chunk| sink.event(call, json!({ "type": "stdoutBytes" }), Some(chunk)));
+            } else {
+                for_each_line(pipe, |line| sink.event(call, json!({ "type": kind, "line": line }), None));
+            }
             let _ = finished.send(());
         });
     }
@@ -594,6 +611,33 @@ mod tests {
             assert!(events.contains(&event), "{events:?}");
         }
         assert_eq!(events.last().unwrap(), &json!({ "status": 2 }));
+    }
+
+    #[test]
+    fn run_keeps_binary_output_as_it_is() {
+        let (io, mut receiver) = io();
+        io.request("proc.run", 1, json!({ "argv": ["sh", "-c", "printf '\\377\\000\\200'"] }), None);
+        let done = until_settled(&mut receiver, 1).pop().unwrap();
+        assert_eq!(done.bytes.unwrap(), [0xff, 0x00, 0x80]);
+    }
+
+    #[test]
+    fn spawn_can_deliver_standard_output_as_bytes() {
+        let (io, mut receiver) = io();
+        let script = "head -c 200000 /dev/zero | tr '\\000' '\\377'; echo done >&2";
+        io.request("proc.spawn", 1, json!({ "argv": ["sh", "-c", script], "binaryStdout": true }), None);
+        let seen = until_settled(&mut receiver, 1);
+        let received: usize = seen
+            .iter()
+            .filter(|completion| completion.json.contains("stdoutBytes"))
+            .map(|completion| {
+                let bytes = completion.bytes.as_ref().unwrap();
+                assert!(bytes.iter().all(|byte| *byte == 0xff));
+                bytes.len()
+            })
+            .sum();
+        assert_eq!(received, 200_000);
+        assert!(seen.iter().any(|completion| completion.json.contains("\"line\":\"done\"")));
     }
 
     #[test]

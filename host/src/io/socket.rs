@@ -10,8 +10,11 @@
 //!   closes the connection once what was queued is out.
 //! - `sock.serve` `{ path, framing }` listens on a path, removing a socket file nobody
 //!   answers on first. It is a stream: `{ type: "listening" }`, then `{ type: "request",
-//!   id, text }` for each request. The app answers one with `sock.reply` `{ request, failed? }`
-//!   (bytes), and `sock.stop` `{ server }` ends the server and removes its file.
+//!   id, peer, text }` for each request, with `{ type: "peer", peer }` before a client's first
+//!   and `{ type: "gone", peer }` after its last. The app answers a request with `sock.reply`
+//!   `{ request, failed? }` (bytes). It can write to a client at any time with `sock.push`
+//!   `{ server, peer }` (bytes), and end that connection with `sock.hangup` `{ server, peer }`.
+//!   `sock.stop` `{ server }` ends the server and removes its file.
 //!   With framing `"eof"` a request is everything the peer sends before it closes its
 //!   writing end, and the answer ends the connection. With `"line"` every line is a
 //!   request, answered with a line, and the connection stays until the peer leaves.
@@ -90,8 +93,17 @@ struct Connection {
 struct Server {
     stop: AtomicBool,
     poller: Poller,
-    /// The peers connected now, for ending them with the server.
-    peers: Mutex<HashMap<u64, UnixStream>>,
+    /// The peers connected now, for ending them with the server and for writing to them.
+    peers: Mutex<HashMap<u64, Arc<Peer>>>,
+}
+
+/// A client of a server of the app's.
+struct Peer {
+    stream: UnixStream,
+    /// Held while writing, so an answer and a push never mix their bytes.
+    writing: Arc<Mutex<()>>,
+    /// What the app pushed, in order, written by a thread of its own so the app never waits on a slow peer.
+    pushed: Sender<Output>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -145,6 +157,8 @@ impl Unix {
             "sock.close" => self.send(sink, call, &args, Output::Close),
             "sock.serve" => self.serve(sink, call, args),
             "sock.reply" => self.reply(sink, call, &args, bytes),
+            "sock.push" => self.push(sink, call, &args, Output::Data(bytes.unwrap_or_default())),
+            "sock.hangup" => self.push(sink, call, &args, Output::Close),
             "sock.stop" => self.stop(sink, call, &args),
             "sock.limit" => match self.declare_limit(&args) {
                 Ok(()) => sink.resolve(call, json!({})),
@@ -256,7 +270,7 @@ impl Unix {
             };
             if let (Ok(writer), Ok(shutdown)) = (stream.try_clone(), stream.try_clone()) {
                 *locked(&connection.stream) = Some(shutdown);
-                std::thread::spawn(move || write_queued(writer, queued));
+                std::thread::spawn(move || write_queued(writer, &Mutex::new(()), queued));
             }
             sink.event(call, json!({ "type": "open" }), None);
             super::lines::for_each_line(&stream, |line| {
@@ -293,7 +307,7 @@ impl Unix {
             }
             server.stop.store(true, Ordering::Relaxed);
             for (_, peer) in locked(&server.peers).drain() {
-                let _ = peer.shutdown(Shutdown::Both);
+                let _ = peer.stream.shutdown(Shutdown::Both);
             }
             locked(&unix.pending).retain(|_, pending| pending.server != call);
             locked(&unix.servers).remove(&call);
@@ -346,41 +360,51 @@ impl Unix {
     fn serve_peer(&self, sink: &Sink, call: u64, server: &Arc<Server>, stream: UnixStream, framing: Framing) {
         let id = self.last_id.fetch_add(1, Ordering::Relaxed);
         let _ = stream.set_nonblocking(false);
-        if let Ok(handle) = stream.try_clone() {
-            locked(&server.peers).insert(id, handle);
+        let (pushed, queued) = channel();
+        let Ok(handle) = stream.try_clone() else {
+            return;
+        };
+        let peer = Arc::new(Peer { stream: handle, writing: Arc::default(), pushed });
+        locked(&server.peers).insert(id, peer.clone());
+        sink.event(call, json!({ "type": "peer", "peer": id }), None);
+        if let Ok(writer) = stream.try_clone() {
+            let writing = peer.writing.clone();
+            std::thread::spawn(move || write_queued(writer, &writing, queued));
         }
         let (unix, sink, server) = (self.clone(), sink.clone(), server.clone());
         std::thread::spawn(move || {
             match framing {
-                Framing::Eof => unix.answer_whole(&sink, call, &stream),
-                Framing::Line => unix.answer_lines(&sink, call, &stream),
+                Framing::Eof => unix.answer_whole(&sink, call, id, &peer),
+                Framing::Line => unix.answer_lines(&sink, call, id, &peer),
             }
-            let _ = stream.shutdown(Shutdown::Both);
+            let _ = peer.stream.shutdown(Shutdown::Both);
             locked(&server.peers).remove(&id);
+            sink.event(call, json!({ "type": "gone", "peer": id }), None);
         });
     }
 
     /// Reads one request to the end of the peer's input and answers it.
-    fn answer_whole(&self, sink: &Sink, call: u64, stream: &UnixStream) {
-        let _ = stream.set_read_timeout(Some(PEER_IDLE));
+    fn answer_whole(&self, sink: &Sink, call: u64, id: u64, peer: &Peer) {
+        let _ = peer.stream.set_read_timeout(Some(PEER_IDLE));
         let mut request = Vec::new();
-        if stream.take(MOST_REQUEST as u64 + 1).read_to_end(&mut request).is_err() || request.len() > MOST_REQUEST {
+        let read = (&peer.stream).take(MOST_REQUEST as u64 + 1).read_to_end(&mut request);
+        if read.is_err() || request.len() > MOST_REQUEST {
             return;
         }
-        self.ask(sink, call, stream, String::from_utf8_lossy(&request).into_owned(), false);
+        self.ask(sink, call, (id, peer), String::from_utf8_lossy(&request).into_owned(), false);
     }
 
     /// Answers each line the peer sends, until it leaves or an answer fails.
-    fn answer_lines(&self, sink: &Sink, call: u64, mut stream: &UnixStream) {
+    fn answer_lines(&self, sink: &Sink, call: u64, id: u64, peer: &Peer) {
         let mut splitter = LineSplitter::default();
         let mut buffer = [0u8; 8192];
         loop {
-            let count = match stream.read(&mut buffer) {
+            let count = match (&peer.stream).read(&mut buffer) {
                 Ok(0) | Err(_) => return,
                 Ok(count) => count,
             };
             for line in splitter.push(&buffer[..count]) {
-                if !self.ask(sink, call, stream, line, true) {
+                if !self.ask(sink, call, (id, peer), line, true) {
                     return;
                 }
             }
@@ -388,18 +412,30 @@ impl Unix {
     }
 
     /// Passes a request to the app and writes its answer. False when the exchange has ended.
-    fn ask(&self, sink: &Sink, call: u64, mut stream: &UnixStream, text: String, line: bool) -> bool {
+    fn ask(&self, sink: &Sink, call: u64, (peer_id, peer): (u64, &Peer), text: String, line: bool) -> bool {
         let id = self.last_id.fetch_add(1, Ordering::Relaxed);
         let (answer, answered) = channel();
         locked(&self.pending).insert(id, Pending { server: call, answer });
-        sink.event(call, json!({ "type": "request", "id": id, "text": text }), None);
+        sink.event(call, json!({ "type": "request", "id": id, "peer": peer_id, "text": text }), None);
         let Ok(Answer::Data(mut data)) = answered.recv() else {
             return false;
         };
         if line && !data.is_empty() && data.last() != Some(&b'\n') {
             data.push(b'\n');
         }
-        stream.write_all(&data).is_ok()
+        let _writing = locked(&peer.writing);
+        (&peer.stream).write_all(&data).is_ok()
+    }
+
+    /// Hands the app's push to a peer's writer, or ends the peer's connection for a hangup. A
+    /// peer that is gone is not an error: the app hears of it as a `gone` event.
+    fn push(&self, sink: &Sink, call: u64, args: &Value, output: Output) {
+        let server = args["server"].as_u64().and_then(|id| locked(&self.servers).get(&id).cloned());
+        let peer = server.zip(args["peer"].as_u64()).and_then(|(server, id)| locked(&server.peers).get(&id).cloned());
+        if let Some(peer) = peer {
+            let _ = peer.pushed.send(output);
+        }
+        sink.resolve(call, json!({}));
     }
 
     fn reply(&self, sink: &Sink, call: u64, args: &Value, bytes: Option<Vec<u8>>) {
@@ -437,11 +473,13 @@ fn bind(raw: &str, path: &Path) -> Result<UnixListener, SocketError> {
     Ok(listener)
 }
 
-/// Writes what the app queued, in order, and ends the connection when asked.
-fn write_queued(mut stream: UnixStream, queued: std::sync::mpsc::Receiver<Output>) {
+/// Writes what the app queued, in order, and ends the connection when asked. Each write holds
+/// `writing`, which others writing to the same stream hold too.
+fn write_queued(mut stream: UnixStream, writing: &Mutex<()>, queued: std::sync::mpsc::Receiver<Output>) {
     while let Ok(output) = queued.recv() {
         match output {
             Output::Data(data) => {
+                let _writing = locked(writing);
                 if stream.write_all(&data).is_err() {
                     break;
                 }
@@ -536,10 +574,13 @@ mod tests {
         assert_eq!(next_event(&mut receiver).json, json!({ "type": "listening" }).to_string());
         let mut client = UnixStream::connect(&path).unwrap();
         client.write_all(b"ping\n").unwrap();
+        let peer: Value = serde_json::from_str(&next_event(&mut receiver).json).unwrap();
+        assert_eq!(peer["type"], "peer");
         let request = next_event(&mut receiver);
         assert_eq!(request.settle, Settle::Event);
         let request: Value = serde_json::from_str(&request.json).unwrap();
         assert_eq!(request["text"], "ping");
+        assert_eq!(request["peer"], peer["peer"]);
         io.request("sock.reply", 2, json!({ "request": request["id"] }), Some(b"pong".to_vec()));
         let mut answer = [0u8; 5];
         client.read_exact(&mut answer).unwrap();
@@ -551,5 +592,34 @@ mod tests {
             }
         }
         assert!(!path.exists());
+    }
+
+    #[test]
+    fn a_server_can_write_to_a_connected_peer_and_hang_up() {
+        let io = Io::new(None, &[], Default::default());
+        let mut receiver = io.take_receiver().unwrap();
+        let path = socket_path("push");
+        io.request("sock.serve", 1, json!({ "path": path.to_string_lossy(), "framing": "line" }), None);
+        assert_eq!(next_event(&mut receiver).json, json!({ "type": "listening" }).to_string());
+        let mut client = UnixStream::connect(&path).unwrap();
+        let peer: Value = serde_json::from_str(&next_event(&mut receiver).json).unwrap();
+        let target = json!({ "server": 1, "peer": peer["peer"] });
+        io.request("sock.push", 2, target.clone(), Some(b"one\n".to_vec()));
+        io.request("sock.push", 3, target.clone(), Some(b"two\n".to_vec()));
+        let mut received = [0u8; 8];
+        client.read_exact(&mut received).unwrap();
+        assert_eq!(&received, b"one\ntwo\n");
+        io.request("sock.hangup", 4, target, None);
+        let mut rest = Vec::new();
+        client.read_to_end(&mut rest).unwrap();
+        assert!(rest.is_empty());
+        let gone: Value = loop {
+            let event: Value = serde_json::from_str(&next_event(&mut receiver).json).unwrap_or_default();
+            if event["type"] == "gone" {
+                break event;
+            }
+        };
+        assert_eq!(gone["peer"], peer["peer"]);
+        io.request("sock.stop", 5, json!({ "server": 1 }), None);
     }
 }

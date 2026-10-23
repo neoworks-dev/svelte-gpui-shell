@@ -92,9 +92,12 @@ pub fn reload_on_change(workbench: Entity<Workbench>, bundle: PathBuf, allow_fil
         let path = bundle.to_string_lossy().to_string();
         while changes.next().await.is_some() {
             cx.update(|cx| {
-                Workbench::in_primary_window(&workbench, cx, |workbench, window, cx| {
-                    workbench.bundle_changed(&path, &allow_files, window, cx)
-                })
+                let reloaded = Workbench::in_primary_window(&workbench, cx, |workbench, window, cx| {
+                    workbench.bundle_changed(&path, &allow_files, Some(window), cx)
+                });
+                if reloaded.is_none() {
+                    workbench.update(cx, |workbench, cx| workbench.bundle_changed(&path, &allow_files, None, cx));
+                }
             });
         }
     })

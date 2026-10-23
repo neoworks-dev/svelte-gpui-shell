@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
-use gpui::{App, Bounds, Entity, Global, TitlebarOptions, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, Entity, Global, QuitMode, TitlebarOptions, WindowBounds, WindowOptions, prelude::*, px, size};
 
 use crate::assets;
 use crate::diagnostics::{heap_megabytes, memory_megabytes};
@@ -172,7 +172,10 @@ pub fn run(options: Options) {
         false => ErrorOutput::Log(errors::log_path(&app_name(&options))),
     };
 
-    gpui_platform::application().with_assets(assets::Assets).run(move |cx: &mut App| {
+    // A shell's windows come and go (a tray exists only while open, a reload replaces them all),
+    // so closing the last one must not end it.
+    let quit_mode = if settings.none { QuitMode::Explicit } else { QuitMode::Default };
+    gpui_platform::application().with_assets(assets::Assets).with_quit_mode(quit_mode).run(move |cx: &mut App| {
         cx.text_system().add_fonts(assets::fonts()).expect("fonts load");
         println!("malloc after the fonts: {:.1} MB in use", heap_megabytes().0);
         let own_window = !settings.none;

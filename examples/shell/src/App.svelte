@@ -9,6 +9,11 @@
   import Empty from "./Empty.svelte";
   import Dock from "./Dock.svelte";
   import Lock from "./Lock.svelte";
+  import Hover from "./Hover.svelte";
+  import Bytes from "./Bytes.svelte";
+  import Push from "./Push.svelte";
+  import Gradients from "./Gradients.svelte";
+  import Numbers from "./Numbers.svelte";
   import VideoScene from "./Video.svelte";
 
   const present = $derived(monitors.list.some((monitor) => monitor.name === __OUTPUT__));
@@ -33,6 +38,16 @@
     <VideoScene monitor={__OUTPUT__} source={__VIDEO__} looping={true} />
   {:else if __SCENE__ === "video-once"}
     <VideoScene monitor={__OUTPUT__} source={__VIDEO__} looping={false} />
+  {:else if __SCENE__ === "bytes"}
+    <Bytes monitor={__OUTPUT__} />
+  {:else if __SCENE__ === "push"}
+    <Push monitor={__OUTPUT__} />
+  {:else if __SCENE__ === "gradients"}
+    <Gradients monitor={__OUTPUT__} />
+  {:else if __SCENE__ === "numbers"}
+    <Numbers monitor={__OUTPUT__} />
+  {:else if __SCENE__ === "hover"}
+    <Hover monitor={__OUTPUT__} />
   {:else if __SCENE__ === "empty"}
     <Empty monitor={__OUTPUT__} />
   {/if}

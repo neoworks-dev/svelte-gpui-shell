@@ -130,7 +130,9 @@ the app's own unless it is set. When the user closes it, `onclose` fires and it 
 closed until the app removes it and mounts it again.
 
 `start(App, {}, { window: false })` opens no window of the app's own, for an app that
-draws only in its `Window`s. `window` above then has nothing to report.
+draws only in its `Window`s. `window` above then has nothing to report. Such an app keeps running
+when its last window closes, as a shell must while a tray or a monitor comes and goes, and with
+`--watch` a rebuild replaces its windows even when none is open.
 
 `examples/windows` has two windows sharing a count.
 

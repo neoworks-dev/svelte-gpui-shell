@@ -12,20 +12,43 @@ export type Sides<T> = T | [T, T] | [T, T, T, T];
 
 export type Align = "start" | "center" | "end" | "stretch" | "baseline";
 
-/** A colour at the start or end of a gradient, or `[colour, position]` with the position from 0 to 1. */
+/**
+ * A colour in a gradient, or `[colour, position]`. A position is from 0 to 1 along a linear
+ * gradient's line, or as a fraction of a radial gradient's radius. Stops without one are spread
+ * evenly, the first at 0 and the last at 1.
+ */
 export type GradientStop = Color | [Color, number];
 
+/** Two to four stops, in order of position. */
+export type GradientStops = [GradientStop, GradientStop] | [GradientStop, GradientStop, GradientStop] | [GradientStop, GradientStop, GradientStop, GradientStop];
+
 /**
- * A straight blend between two colours. `angle` is in degrees, 0 pointing up and
+ * A straight blend between colours. `angle` is in degrees, 0 pointing up and
  * increasing clockwise as in CSS; it defaults to 180, top to bottom.
  */
 export interface LinearGradient {
   angle?: number;
-  stops: [GradientStop, GradientStop];
+  stops: GradientStops;
 }
 
-/** A plain colour, or a gradient: `{ linear: { angle: 135, stops: ["#7c3aed", "#2563eb"] } }`. */
-export type Background = Color | { linear: LinearGradient };
+/**
+ * Colours spreading from a point as an ellipse. `center` and `radius` are fractions of the
+ * element's width and height (`[x, y]`, or one number for both): the defaults, `[0.5, 0.5]` and
+ * `0.5`, reach the middle of each side from the middle. A stop at 1 is on the ellipse, and the
+ * last colour fills everything beyond it, so a final stop with alpha 0 fades out. Colours are
+ * blended as they are written, not premultiplied: fade to the same colour with alpha 0.
+ */
+export interface RadialGradient {
+  center?: [number, number];
+  radius?: number | [number, number];
+  stops: GradientStops;
+}
+
+/**
+ * A plain colour, or a gradient: `{ linear: { angle: 135, stops: ["#7c3aed", "#2563eb"] } }` or
+ * `{ radial: { center: [1, 0], radius: 1, stops: ["#fff", ["#fff0", 1]] } }`.
+ */
+export type Background = Color | { linear: LinearGradient } | { radial: RadialGradient };
 
 export interface Shadow {
   x?: number;
@@ -140,6 +163,8 @@ export interface Style {
   truncate?: boolean;
   maxLines?: number;
   uppercase?: boolean;
+  /** Digits of equal width (the font's `tnum` feature), so a clock or a counter does not shift what follows it. Inherited by nested `Text`. A font without the feature draws as before. */
+  tabularNumbers?: boolean;
 }
 
 /** A style as the host reads it, or nothing. */

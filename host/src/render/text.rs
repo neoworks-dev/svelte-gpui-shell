@@ -18,6 +18,8 @@ pub struct Inherited {
     pub(super) underline: bool,
     pub(super) strikethrough: bool,
     pub(super) uppercase: bool,
+    /// Digits all as wide as each other (the `tnum` feature), so a changing number does not shift what follows.
+    pub(super) tabular_numbers: bool,
     /// The product of the `scale` of every element above, which lengths in pixels are drawn at.
     pub(super) zoom: f32,
 }
@@ -33,6 +35,7 @@ impl Inherited {
             underline: false,
             strikethrough: false,
             uppercase: false,
+            tabular_numbers: false,
             zoom: 1.0,
         }
     }
@@ -47,6 +50,7 @@ impl Inherited {
             underline: style.underline.unwrap_or(self.underline),
             strikethrough: style.strikethrough.unwrap_or(self.strikethrough),
             uppercase: style.uppercase.unwrap_or(self.uppercase),
+            tabular_numbers: style.tabular_numbers.unwrap_or(self.tabular_numbers),
             zoom: self.zoom * style.scale.unwrap_or(1.0).max(0.01),
         }
     }
@@ -156,6 +160,9 @@ pub(super) fn push_run(
     font.weight = FontWeight(inherited.weight);
     if inherited.italic {
         font.style = gpui::FontStyle::Italic;
+    }
+    if inherited.tabular_numbers {
+        font.features = gpui::FontFeatures(std::sync::Arc::new(vec![("tnum".to_string(), 1)]));
     }
     let line = |on: bool| {
         on.then(|| gpui::UnderlineStyle { thickness: px(1.0), color: Some(inherited.colour.into()), wavy: false })

@@ -6,6 +6,7 @@ use gpui::{Context, Window};
 
 use super::Workbench;
 use crate::runtime::{App as Svelte, Script};
+use crate::tree::ROOT;
 
 impl Workbench {
     /// The bundle, or the build's report of why it has no new bundle, changed on disk. A failed
@@ -15,7 +16,7 @@ impl Workbench {
         &mut self,
         bundle: &str,
         allow_files: &[String],
-        window: &mut Window,
+        window: Option<&mut Window>,
         cx: &mut Context<Self>,
     ) {
         match std::fs::read_to_string(format!("{bundle}.error")) {
@@ -33,7 +34,13 @@ impl Workbench {
     ///
     /// A bundle that fails to run does not stop the host: the window shows the error until
     /// the next good build.
-    pub(crate) fn reload(&mut self, bundle: &str, allow_files: &[String], window: &mut Window, cx: &mut Context<Self>) {
+    pub(crate) fn reload(
+        &mut self,
+        bundle: &str,
+        allow_files: &[String],
+        window: Option<&mut Window>,
+        cx: &mut Context<Self>,
+    ) {
         let started = Instant::now();
         let commands = self.svelte.commands.clone();
         let next = Svelte::start_with(bundle, Script::Development(bundle.to_string()), allow_files, commands);
@@ -47,9 +54,13 @@ impl Workbench {
         );
     }
 
-    /// Swaps in a new app and forgets the old one's state.
-    fn replace_app(&mut self, next: Svelte, window: &mut Window, cx: &mut Context<Self>) {
-        self.release_canvases(window);
+    /// Swaps in a new app and forgets the old one's state. `window` is none for a shell that has
+    /// no window open at the moment.
+    fn replace_app(&mut self, next: Svelte, mut window: Option<&mut Window>, cx: &mut Context<Self>) {
+        if let Some(window) = window.as_deref_mut() {
+            self.release_canvases(window);
+        }
+        self.close_old_windows(cx);
         self.generation += 1;
         // The old app, its QuickJS runtime and its element tree, are dropped here, and with
         // them the sockets and watches its `Io` owns.
@@ -62,6 +73,11 @@ impl Workbench {
         self.interaction.images.reset();
         self.forget_old_state();
         self.listen_for_io(cx);
+        let Some(window) = window else {
+            self.tick_without_window(cx);
+            cx.notify();
+            return;
+        };
         if let Some(title) = self.svelte.window_settings.borrow().as_ref().and_then(|settings| settings.title.clone()) {
             window.set_window_title(&title);
         }
@@ -69,12 +85,38 @@ impl Workbench {
         cx.notify();
     }
 
-    /// Gives the window the images of every canvas the old app drew.
+    /// Closes the `g-window`s of the old tree: the new tree numbers its windows from the start
+    /// again, so the new app opens its own, on the monitors it is told about.
+    fn close_old_windows(&mut self, cx: &mut Context<Self>) {
+        let (old, kept) = std::mem::take(&mut self.windows.open).into_iter().partition(|open| open.root != ROOT);
+        self.windows.open = kept;
+        self.windows.opening.clear();
+        self.windows.closed.clear();
+        self.windows.reported_monitors = None;
+        self.windows.reported_lock = None;
+        for window in old {
+            self.forget_window(window.root);
+            cx.defer(move |cx| {
+                window.handle.update(cx, |_, window, _| window.remove_window()).ok();
+            });
+        }
+    }
+
+    /// Gives the window the images of every canvas and video the old app drew.
     fn release_canvases(&mut self, window: &mut Window) {
-        let mut tree = self.svelte.tree.borrow_mut();
-        let dropped = std::mem::take(&mut tree.dropped_canvases);
-        for surface in dropped.iter().chain(tree.canvases.values()) {
-            for image in surface.borrow_mut().release() {
+        {
+            let mut tree = self.svelte.tree.borrow_mut();
+            let dropped = std::mem::take(&mut tree.dropped_canvases);
+            for surface in dropped.iter().chain(tree.canvases.values()) {
+                for image in surface.borrow_mut().release() {
+                    window.drop_image(image).ok();
+                }
+            }
+        }
+        let mut players: Vec<_> = std::mem::take(&mut *self.interaction.retired_videos.borrow_mut());
+        players.extend(self.interaction.videos.borrow_mut().drain().map(|(_, player)| player));
+        for player in players {
+            for image in player.borrow_mut().release() {
                 window.drop_image(image).ok();
             }
         }

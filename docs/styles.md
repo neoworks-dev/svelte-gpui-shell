@@ -84,7 +84,7 @@ long text inside it can truncate instead of pushing the layout wider.
 
 | Property | Values | |
 |---|---|---|
-| `background` | `Color` \| `{ linear: { angle?, stops } }` | A colour, or a [gradient](#gradients). |
+| `background` | `Color` \| `{ linear: { angle?, stops } }` \| `{ radial: { center?, radius?, stops } }` | A colour, or a [gradient](#gradients). |
 | `opacity` | `number` | 0 to 1, for the element and everything inside it. |
 | `borderWidth` | `Sides<number>` | |
 | `borderTopWidth`, `borderRightWidth`, `borderBottomWidth`, `borderLeftWidth` | `number` | |
@@ -95,20 +95,29 @@ long text inside it can truncate instead of pushing the layout wider.
 
 ### Gradients
 
-A `background` can be a linear gradient between two colours:
+A `background` can be a linear or a radial gradient of two to four colours:
 
 ```svelte
 <View style={{ background: { linear: { angle: 135, stops: ["#7c3aed", "#2563eb"] } } }} />
 <View style={{ background: { linear: { stops: [["#00000000", 0.4], "#000000cc"] } } }} />
+<View style={{ background: { linear: { angle: 90, stops: ["#ef4444", "#facc15", "#22c55e", "#3b82f6"] } } }} />
+<View style={{ background: { radial: { center: [1, 0], radius: 1, stops: ["#ffffff", ["#ffffff00", 1]] } } }} />
 ```
 
 `angle` is in degrees as in CSS: 0 points up, 90 right, and it defaults to 180, top to bottom. A stop is a
-colour, or `[colour, position]` with the position from 0 to 1 along the line; the first defaults to 0 and
-the second to 1, and the colours stay flat outside them. Radii clip a gradient like any other background.
+colour, or `[colour, position]` with the position from 0 to 1 along the line; stops without one are spread
+evenly, the first at 0 and the last at 1, and the first and last colours stay flat beyond their positions.
+Radii clip a gradient like any other background.
 
-What is not there: a gradient has exactly two stops, and there are no radial or conic gradients; GPUI's
-renderer draws only that. A gradient does not ease under `transition`, and `hover`, `active` and `focus`
-can swap one for a colour or another gradient, but not blend.
+A radial gradient is an ellipse. `center` and `radius` are fractions of the element's width and height
+(`[x, y]`, or one number for both) and default to `[0.5, 0.5]` and `0.5`, which reaches the middle of each
+side. A stop's position is a fraction of the radius, so a stop at 1 is on the ellipse and the last colour
+fills the rest. A centre outside 0 to 1 is fine: `[1, 1]` with `radius: 1` is a quarter circle in the corner
+of a square. Colours blend as written, not premultiplied, so fade to the same colour with alpha 0
+(`"#ffffff"` to `"#ffffff00"`), not to `"transparent"`.
+
+What is not there: more than four stops, and conic gradients. A gradient does not ease under `transition`,
+and `hover`, `active` and `focus` can swap one for a colour or another gradient, but not blend.
 
 ### Scale and rotate
 
@@ -151,6 +160,7 @@ setting `color` or `fontSize` on a `Button` styles its label.
 | `fontFamily` | `"sans"` \| `"mono"` \| an installed font's name | `"sans"` is Geist and `"mono"` is JetBrains Mono, both bundled with the host. Geist is the default. |
 | `lineHeight` | `number` | In pixels. |
 | `italic`, `underline`, `strikethrough`, `uppercase` | `boolean` | |
+| `tabularNumbers` | `boolean` | Digits of equal width, so a clock or a counter does not shift what follows it. Needs a font with the `tnum` feature: the bundled Geist has it, a font without it draws as before. |
 | `textAlign` | `"left"` \| `"center"` \| `"right"` | |
 | `nowrap` | `boolean` | Keeps text on one line. |
 | `truncate` | `boolean` | One line, cut off with an ellipsis. |

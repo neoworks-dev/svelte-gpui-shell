@@ -72,7 +72,7 @@ These are the only keys; anything else is ignored. See `docs/styles.md` for valu
 - **Paint:** `background opacity borderWidth border{Top,Right,Bottom,Left}Width
   borderColor radius shadow cursor transition`
 - **Text:** `color fontSize fontWeight fontFamily lineHeight italic underline
-  strikethrough textAlign nowrap truncate maxLines uppercase`
+  strikethrough textAlign nowrap truncate maxLines uppercase tabularNumbers`
 
 The values that trip people up:
 
@@ -83,8 +83,11 @@ The values that trip people up:
 - `radius` is a number or four corners.
 - `fontFamily` is `"sans"` (Geist), `"mono"` (JetBrains Mono) or an installed font.
 - `lineHeight` is in pixels.
-- `background` is a colour or a two-stop gradient `{ linear: { angle, stops: [colour | [colour, 0..1], …] } }`
-  (angle in CSS degrees, default 180); no radial, no more than two stops, never eased.
+- `background` is a colour, a linear gradient `{ linear: { angle, stops } }` (angle in CSS degrees,
+  default 180) or a radial one `{ radial: { center: [0.5, 0.5], radius: 0.5, stops } }` (fractions of the
+  box; stop positions are fractions of the radius). `stops` is two to four `colour | [colour, 0..1]`; stops
+  without a position are spread evenly. Fade to the same colour with alpha 0, not `transparent`. No
+  conic gradients, never eased.
 - `scale: 1.2` draws an element and its contents larger about its centre (lengths inside are multiplied;
   a box with pixel `width` and `height` keeps its room). In `hover` it needs `transition` on the element.
   `rotate: 90` (degrees) turns an `Icon` only; other primitives draw upright. Svelte's `scale` transition draws.
@@ -114,17 +117,21 @@ A theme is plain data: exported `Style` objects spread together, or combined wit
   `start(App, {}, { files: { allow: ["$data/my-app"] } })`. Dialog picks are always
   allowed. The `--allow-files` host flag narrows it further.
 - **`processes`** (from `@neoworks/svelte-gpui`) runs programs from an argv list, no shell:
-  - `run(argv, { stdin?, cwd?, env?, timeout? })` resolves `{ status, signal?, stdout, stderr }`
-    once the program exits; a failure status still resolves.
-  - `spawn(argv, { onStdout?, onStderr?, onExit?, onError? })` returns a handle at once, with
-    per-line callbacks, `write`, `closeStdin`, `kill(signal?)` and `exited`. Programs still
+  - `run(argv, { stdin?, cwd?, env?, timeout?, encoding? })` resolves `{ status, signal?, stdout, stderr }`
+    once the program exits; a failure status still resolves. `encoding: "bytes"` makes `stdout`
+    a `Uint8Array` of exactly what the program wrote (text otherwise).
+  - `spawn(argv, { onStdout?, onStdoutBytes?, onStderr?, onExit?, onError? })` returns a handle at once, with
+    per-line callbacks (`onStdoutBytes(chunk)` instead gives stdout as raw chunks), `write`, `closeStdin`, `kill(signal?)` and `exited`. Programs still
     running when the app quits or reloads are killed.
   - `env()` reads the host's environment. Errors are `ProcessError` (`code`).
   - Unlimited unless `start(App, {}, { process: { allow: ["nmcli", "/usr/bin/x"] } })`.
 - **`unixSockets`** talks to local daemons: `request(path, data)` (writes, reads to EOF, resolves
   text; `requestBytes` for bytes), `connect(path, { onLine, onClose, onOpen, onError })` with
   `write`/`close`/`closed`, and `serve(path, handler, { framing })` where the handler gets each
-  request's text and returns the answer (or a promise); `framing` is `"eof"` or `"line"`. Errors
+  request's text and its `peer` and returns the answer (or a promise); `framing` is `"eof"` or `"line"`.
+  A server can push to a client whenever it likes: keep the `peer` and call `peer.write(data)`
+  (also `peer.close()`, `server.peers`, `server.broadcast(data)`, options `onPeer`, `onPeerGone`);
+  nothing is appended, so end lines with `\n`. Errors
   are `SocketError`. Unlimited unless `start(App, {}, { sockets: { allow: ["$runtime/hypr"] } })`.
   `files.paths().runtime` is `XDG_RUNTIME_DIR`.
 
