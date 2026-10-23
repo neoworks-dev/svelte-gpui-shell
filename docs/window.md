@@ -134,6 +134,50 @@ draws only in its `Window`s. `window` above then has nothing to report.
 
 `examples/windows` has two windows sharing a count.
 
+## Layer surfaces
+
+With `layer`, a `Window` is a layer surface (wlr-layer-shell), the kind bars, docks,
+wallpapers and notifications are. The compositor places it against its `anchor` edges and
+stretches it along an axis whose `width` or `height` is 0 or left out:
+
+```svelte
+<Window monitor="DP-2" layer="top" anchor={["top", "left", "right"]} height={32}
+        exclusiveZone={32} namespace="bar" style={{ background: "#18181b" }}>
+  <Clock />
+</Window>
+```
+
+| Prop | Meaning |
+|---|---|
+| `layer` | `"background"`, `"bottom"`, `"top"` or `"overlay"`. |
+| `anchor` | The edges it sits against: any of `"top"`, `"bottom"`, `"left"`, `"right"`. |
+| `exclusiveZone` | Room it keeps along its anchored edge, which other windows stay out of. |
+| `margin` | Space from its anchor edges: one number, or top, right, bottom, left. |
+| `keyboard` | `"none"` (the default), `"exclusive"` or `"on-demand"`. |
+| `namespace` | The name compositor rules match it by, such as Hyprland's `layerrule`. |
+| `monitor` | The monitor it opens on, by name. |
+
+`layer`, `anchor`, `margin`, `namespace` and `monitor` are read when it opens; `width`,
+`height`, `exclusiveZone` and `keyboard` follow changes. A `Window` that names a monitor
+that is not connected does not open at all, rather than on whichever monitor the compositor
+would choose. `examples/layer-shell` has a bar and a card on one monitor.
+
+## Monitors
+
+`monitors.list` from `@neoworks/svelte-gpui` is the connected monitors, each with its `name`
+(the connector, such as `DP-2`) and its `x`, `y`, `width` and `height` in logical pixels. It
+is reactive, so a bar per monitor follows them as they are plugged in and out:
+
+```svelte
+{#each monitors.list as monitor (monitor.name)}
+  <Window monitor={monitor.name} layer="top" anchor={["top", "left", "right"]} height={32}>
+    <Bar />
+  </Window>
+{/each}
+```
+
+It is empty until the host has reported them, shortly after the app starts.
+
 ## What is not there
 
 GPUI 0.2.2 on Wayland does not support these, so the API leaves them out rather than

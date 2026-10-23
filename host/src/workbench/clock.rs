@@ -15,18 +15,40 @@ impl Workbench {
     /// redraws if anything changed, and arranges the next tick. `frame` says whether this
     /// runs on a display frame, which is when animation frames run.
     pub(crate) fn tick(&mut self, frame: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let wake = self.advance(frame, Some(window), cx);
+        self.schedule(wake, window, cx);
+    }
+
+    /// A tick while the app has no window open, as a shell has before its monitors are
+    /// known: the clock, the app's work and its reports, without what needs a window.
+    pub(crate) fn tick_without_window(&mut self, cx: &mut Context<Self>) {
+        let wake = self.advance(false, None, cx);
+        if let Wake::After(delay) = wake {
+            self.tick_at_without_window(Instant::now() + delay, cx);
+        }
+    }
+
+    /// What every tick does. The steps that need a window run in `window`, when there is one.
+    fn advance(&mut self, frame: bool, mut window: Option<&mut Window>, cx: &mut Context<Self>) -> Wake {
         let milliseconds = self.svelte.started.elapsed().as_secs_f64() * 1000.0;
         let wake = self.svelte.pump(milliseconds, frame);
-        self.run_commands(window, cx);
-        self.run_window_commands(window, cx);
+        if let Some(window) = window.as_deref_mut() {
+            self.run_commands(window, cx);
+            self.run_window_commands(window, cx);
+        }
         self.report_errors(cx);
         self.run_main_jobs(cx);
-        self.report_focus(window, cx);
+        if let Some(window) = window.as_deref_mut() {
+            self.report_focus(window, cx);
+        }
         self.blink(cx);
         self.report_scroll(cx);
         self.report_sizes(cx);
         self.report_images(cx);
-        self.report_window(window, cx);
+        if let Some(window) = window.as_deref_mut() {
+            self.report_window(window, cx);
+        }
+        self.report_monitors(cx);
         let version = self.svelte.tree.borrow().version;
         if version != self.seen_version {
             self.seen_version = version;
@@ -69,7 +91,7 @@ impl Workbench {
         for id in moved {
             self.touch(id, cx);
         }
-        self.schedule(wake, window, cx);
+        wake
     }
 
     /// Arranges the next tick: on the display's next frame while anything animates, so
@@ -128,6 +150,35 @@ impl Workbench {
                 workbench.tick(false, window, cx);
             })
             .ok();
+        })
+        .detach();
+    }
+
+    /// Ticks at a moment while there is no window to tick in, or in the first window when
+    /// one has opened since.
+    fn tick_at_without_window(&mut self, due: Instant, cx: &mut Context<Self>) {
+        if self.timer_due.is_some_and(|sooner| sooner <= due) {
+            return;
+        }
+        self.timer_due = Some(due);
+        cx.spawn(async move |this, cx| {
+            let delay = due.saturating_duration_since(Instant::now());
+            cx.background_executor().timer(delay).await;
+            let Some(this) = this.upgrade() else {
+                return;
+            };
+            cx.update(|cx| {
+                this.update(cx, |workbench, _| {
+                    if workbench.timer_due == Some(due) {
+                        workbench.timer_due = None;
+                    }
+                });
+                let ticked =
+                    Workbench::in_primary_window(&this, cx, |workbench, window, cx| workbench.tick(false, window, cx));
+                if ticked.is_none() {
+                    this.update(cx, |workbench, cx| workbench.tick_without_window(cx));
+                }
+            });
         })
         .detach();
     }

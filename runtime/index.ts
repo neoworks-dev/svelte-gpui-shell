@@ -8,10 +8,13 @@ import { adoptRoot, flush, install } from "./host/bridge";
 import { dispatch } from "./host/events";
 import { receive } from "./io/channel";
 import { limitFiles, type FilesLimit } from "./io/files";
+import { receive as receiveMonitors } from "./monitors.svelte";
 import { askToClose, declareWindow, receive as receiveWindow, type WindowOptions } from "./window.svelte";
 
 export type { HostEvent } from "./host/events";
 export { window } from "./window.svelte";
+export { monitors } from "./monitors.svelte";
+export type { Monitor } from "./monitors.svelte";
 export type { CloseHandler, WindowOptions } from "./window.svelte";
 export { element } from "./ui/element";
 export type { ElementMethods, ElementProps } from "./ui/element";
@@ -45,7 +48,7 @@ export interface StartOptions {
 /**
  * Mounts a component into the host's root, and exposes the entry points the host
  * calls back into: `__event` for input, `__io` for background calls finishing,
- * `__window` for the window's state, `__closeRequested` for the close button, and `__pump` for the clock, which answers when it next has work (see `wake`).
+ * `__window` for the window's state, `__monitors` for the monitors, `__closeRequested` for the close button, and `__pump` for the clock, which answers when it next has work (see `wake`).
  */
 export function start(Component: unknown, props: Record<string, unknown> = {}, options: StartOptions = {}): void {
   // The limit goes first, so nothing the app does while mounting can run without it.
@@ -90,6 +93,10 @@ export function start(Component: unknown, props: Record<string, unknown> = {}, o
     if (receiveWindow(width, height, scale, focused, maximized, fullscreen)) {
       dispatch(0, "resize", {});
     }
+    settle();
+  };
+  globals.__monitors = (list: string): void => {
+    receiveMonitors(JSON.parse(list));
     settle();
   };
   globals.__closeRequested = askToClose;

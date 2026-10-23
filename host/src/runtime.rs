@@ -538,6 +538,13 @@ impl App {
         self.after_call();
     }
 
+    /// Tells the app which monitors are connected, as a JSON list.
+    pub fn monitors(&self, list: &str) {
+        let list = list.to_string();
+        self.call_app(ErrorKind::Event, "__monitors", |function, _| function.call::<_, ()>((list,)));
+        self.after_call();
+    }
+
     /// Asks the app whether the window may close now. `false` when a handler refused, or
     /// when one is still deciding: the app closes the window itself once it has said yes.
     pub fn close_requested(&self) -> bool {

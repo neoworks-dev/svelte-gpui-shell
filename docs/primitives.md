@@ -411,8 +411,15 @@ opens while it is mounted and closes when it is removed (`docs/window.md`).
 |---|---|---|
 | `style` | `Style` | Lays out and paints the window's content. Without a `background` it is transparent. |
 | `title` | `string` | Read when it opens. |
-| `width`, `height` | `number` | The content's size when it opens. The default is 400 by 300. |
+| `width`, `height` | `number` | The content's size. The default is 400 by 300, and 0 for a layer surface, which the compositor fills along anchored axes. Follows changes. |
 | `appId` | `string` | The id window rules match. The app's own by default. |
+| `monitor` | `string` | The monitor it opens on, by name (`monitors.list`). It does not open when that monitor is missing. |
+| `layer` | `"background"` \| `"bottom"` \| `"top"` \| `"overlay"` | Makes it a layer surface (`docs/window.md`). |
+| `anchor` | `("top" \| "bottom" \| "left" \| "right")[]` | The edges a layer surface sits against. |
+| `exclusiveZone` | `number` | Room a layer surface keeps along its anchored edge. Follows changes. |
+| `margin` | `number` \| `[top, right, bottom, left]` | Space from the anchor edges. |
+| `keyboard` | `"none"` \| `"exclusive"` \| `"on-demand"` | Whether a layer surface takes the keyboard. Follows changes. |
+| `namespace` | `string` | The name compositor rules match a layer surface by. |
 | `onclose` | `() => void` | The user or the compositor closed it. It stays closed until it is removed and mounted again. |
 
 ## Popover

@@ -50,7 +50,7 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Canvas` | `style ondown onmove onup onhover onwheel onlayout` | `begin(x,y,pen) lineTo end line fillRect fillCircle clear` |
 | `Presence` | `in out style`, each a transition or `[fn, params]` | |
 | `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
-| `Window` | `style title width height appId onclose`; its children are drawn in a window of their own, open while it is mounted | |
+| `Window` | `style title width height appId monitor layer anchor exclusiveZone margin keyboard namespace onclose`; its children are drawn in a window of their own, open while it is mounted; with `layer` it is a layer surface | |
 
 `View` is a column. `Button` and `Input` are rows. Text properties (`color`,
 `fontSize`, `fontWeight`, `fontFamily`, …) are inherited by children.
@@ -212,6 +212,7 @@ with `scripts/shot.sh`, so an error shows up in the screenshot.
 - **Open it:** `start(App, {}, { window: { title, width, height, minWidth, minHeight } })`.
   `window: false` opens none, for an app that draws only in `Window`s.
 - **More windows:** `<Window>` opens one while mounted; state is shared, it is one app.
+- **Shells:** `<Window layer="top" anchor={["top","left","right"]} height={32} exclusiveZone={32} monitor={m.name}>` per `monitors.list` entry (reactive, from `@neoworks/svelte-gpui`). A `Window` naming a missing monitor does not open.
   `--width` and `--height` override the size.
 - **Read it,** reactively: `window.size` (`{ width, height }`), `scale`, `focused`,
   `maximized`, `fullscreen`.

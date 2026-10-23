@@ -196,9 +196,12 @@ pub fn run(options: Options) {
                 cx.background_executor().timer(Duration::from_millis(100)).await;
                 let gone = cx.update(|cx| match beating.upgrade() {
                     Some(workbench) => {
-                        Workbench::in_primary_window(&workbench, cx, |workbench, window, cx| {
+                        let ticked = Workbench::in_primary_window(&workbench, cx, |workbench, window, cx| {
                             workbench.tick(false, window, cx)
                         });
+                        if ticked.is_none() {
+                            workbench.update(cx, |workbench, cx| workbench.tick_without_window(cx));
+                        }
                         false
                     }
                     None => true,

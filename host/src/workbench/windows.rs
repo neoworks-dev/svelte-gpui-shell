@@ -5,9 +5,11 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
+use gpui::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui::{
-    AnyElement, App, AppContext, Bounds, Context, Entity, FocusHandle, IntoElement, Render, TitlebarOptions, Window,
-    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowOptions, div, prelude::*, px, size,
+    AnyElement, App, AppContext, Bounds, Context, Entity, FocusHandle, IntoElement, Pixels, Render, TitlebarOptions,
+    Window, WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions, div, point, prelude::*,
+    px, size,
 };
 
 use super::Workbench;
@@ -36,6 +38,8 @@ impl Render for WindowView {
 pub(crate) struct OpenWindow {
     pub root: NodeId,
     pub handle: WindowHandle<WindowView>,
+    /// The attributes that can change an open window, as it was last given them.
+    pub applied: HashMap<String, String>,
 }
 
 /// The windows' bookkeeping, apart from the rest of the workbench.
@@ -50,6 +54,17 @@ pub(crate) struct Windows {
     pub closed: HashSet<NodeId>,
     /// The app's id, which a `g-window` takes when it does not name its own.
     pub app_id: Option<String>,
+    /// The monitors as the app was last told, so it hears only changes.
+    pub reported_monitors: Option<String>,
+}
+
+/// The attributes an open window follows: a layer surface's exclusive zone and keyboard
+/// mode, and its size.
+const LIVE_ATTRIBUTES: [&str; 4] = ["exclusive-zone", "keyboard", "width", "height"];
+
+fn live_attributes(attributes: &HashMap<String, String>) -> HashMap<String, String> {
+    let live = attributes.iter().filter(|(name, _)| LIVE_ATTRIBUTES.contains(&name.as_str()));
+    live.map(|(name, value)| (name.clone(), value.clone())).collect()
 }
 
 impl Workbench {
@@ -79,7 +94,8 @@ impl Workbench {
         };
         this.update(cx, |this, _| {
             this.windows.opening.remove(&root);
-            this.windows.open.push(OpenWindow { root, handle });
+            let applied = this.svelte.tree.borrow().nodes.get(&root).map(|node| live_attributes(&node.attributes));
+            this.windows.open.push(OpenWindow { root, handle, applied: applied.unwrap_or_default() });
         });
         Some(handle)
     }
@@ -192,6 +208,7 @@ impl Workbench {
                 window.handle.update(cx, |_, window, _| window.remove_window()).ok();
             });
         }
+        self.follow_attributes(cx);
         let this = cx.entity();
         for root in wanted {
             let known = self.windows.open.iter().any(|open| open.root == root)
@@ -210,10 +227,61 @@ impl Workbench {
                     let attributes = tree.nodes.get(&root).map(|node| node.attributes.clone()).unwrap_or_default();
                     (attributes, workbench.windows.app_id.clone())
                 };
-                let options = window_options(&attributes, app_id, cx);
-                Workbench::open_window(&this, root, options, cx);
+                match window_options(&attributes, app_id, cx) {
+                    Some(options) => {
+                        Workbench::open_window(&this, root, options, cx);
+                    }
+                    None => this.update(cx, |this, _| {
+                        this.windows.opening.remove(&root);
+                        this.windows.closed.insert(root);
+                    }),
+                }
             });
         }
+    }
+
+    /// Carries changes to an open `g-window`'s exclusive zone, keyboard mode or size over to
+    /// its window, after this update.
+    fn follow_attributes(&mut self, cx: &mut Context<Self>) {
+        let tree = self.svelte.tree.borrow();
+        for open in &mut self.windows.open {
+            let Some(node) = tree.nodes.get(&open.root) else {
+                continue;
+            };
+            let now = live_attributes(&node.attributes);
+            if now == open.applied || open.root == ROOT {
+                continue;
+            }
+            let before = std::mem::replace(&mut open.applied, now.clone());
+            let handle = open.handle;
+            cx.defer(move |cx| {
+                handle.update(cx, |_, window, _| apply_changes(&before, &now, window)).ok();
+            });
+        }
+    }
+
+    /// Tells the app which monitors are connected, when that changed since the last time.
+    pub(super) fn report_monitors(&mut self, cx: &mut Context<Self>) {
+        let list: Vec<serde_json::Value> = cx
+            .displays()
+            .iter()
+            .filter_map(|display| {
+                let bounds = display.bounds();
+                Some(serde_json::json!({
+                    "name": display.name()?,
+                    "x": f32::from(bounds.origin.x),
+                    "y": f32::from(bounds.origin.y),
+                    "width": f32::from(bounds.size.width),
+                    "height": f32::from(bounds.size.height),
+                }))
+            })
+            .collect();
+        let json = serde_json::Value::Array(list).to_string();
+        if self.windows.reported_monitors.as_ref() == Some(&json) {
+            return;
+        }
+        self.svelte.monitors(&json);
+        self.windows.reported_monitors = Some(json);
     }
 
     /// Draws one window: the app's own, or a `g-window`'s.
@@ -299,20 +367,155 @@ fn mounted_windows(tree: &Tree) -> HashSet<NodeId> {
     found
 }
 
-/// How a `g-window` opens, from its attributes: `title`, `width`, `height` and `app-id`, which
-/// is the app's own unless it says.
-fn window_options(attributes: &HashMap<String, String>, app_id: Option<String>, cx: &mut App) -> WindowOptions {
+/// Applies what changed between two sets of live attributes to an open window.
+fn apply_changes(before: &HashMap<String, String>, now: &HashMap<String, String>, window: &mut Window) {
+    let changed = |name: &str| before.get(name) != now.get(name);
+    if changed("exclusive-zone") {
+        let zone = now.get("exclusive-zone").and_then(|zone| zone.parse::<f32>().ok()).unwrap_or(0.0);
+        window.set_exclusive_zone(px(zone));
+    }
+    if changed("keyboard") {
+        window.set_keyboard_interactivity(keyboard(now.get("keyboard").map(String::as_str)));
+    }
+    if changed("width") || changed("height") {
+        let number = |name: &str| now.get(name).and_then(|value| value.parse::<f32>().ok()).unwrap_or(0.0);
+        window.resize(size(px(number("width")), px(number("height"))));
+    }
+}
+
+/// How a `g-window` opens, from its attributes: `title`, `width`, `height`, `app-id` (the app's
+/// own unless it says), `monitor` (a display's name) and, for a layer surface, `layer` with
+/// `anchor`, `exclusive-zone`, `margin`, `keyboard` and `namespace`. `None` when it names a
+/// monitor that is not connected: it does not open elsewhere instead.
+fn window_options(attributes: &HashMap<String, String>, app_id: Option<String>, cx: &mut App) -> Option<WindowOptions> {
     let number = |name: &str| attributes.get(name).and_then(|value| value.parse::<f32>().ok());
-    let width = number("width").unwrap_or(DEFAULT_WIDTH);
-    let height = number("height").unwrap_or(DEFAULT_HEIGHT);
-    let bounds = Bounds::centered(None, size(px(width), px(height)), cx);
-    WindowOptions {
+    let display = match attributes.get("monitor") {
+        Some(name) => {
+            let found = cx.displays().into_iter().find(|display| display.name().as_deref() == Some(name.as_str()));
+            if found.is_none() {
+                eprintln!("svelte-gpui: no monitor named {name:?}; the window does not open");
+                return None;
+            }
+            found
+        }
+        None => None,
+    };
+    let layer = attributes.get("layer").and_then(|layer| layer_options(attributes, layer));
+    // A layer surface sized 0 along an axis is stretched there by the compositor.
+    let (default_width, default_height) = match layer {
+        Some(_) => (0.0, 0.0),
+        None => (DEFAULT_WIDTH, DEFAULT_HEIGHT),
+    };
+    let width = number("width").unwrap_or(default_width);
+    let height = number("height").unwrap_or(default_height);
+    let bounds = match &layer {
+        Some(_) => Bounds { origin: point(px(0.0), px(0.0)), size: size(px(width), px(height)) },
+        None => Bounds::centered(display.as_ref().map(|display| display.id()), size(px(width), px(height)), cx),
+    };
+    Some(WindowOptions {
         window_bounds: Some(WindowBounds::Windowed(bounds)),
         titlebar: attributes
             .get("title")
             .map(|title| TitlebarOptions { title: Some(title.clone().into()), ..Default::default() }),
         app_id: attributes.get("app-id").cloned().or(app_id),
+        display_id: display.map(|display| display.id()),
         window_background: WindowBackgroundAppearance::Transparent,
+        kind: match layer {
+            Some(layer) => WindowKind::LayerShell(layer),
+            None => WindowKind::Normal,
+        },
         ..Default::default()
+    })
+}
+
+/// A layer surface's options. `None` for a `layer` it does not know.
+fn layer_options(attributes: &HashMap<String, String>, layer: &str) -> Option<LayerShellOptions> {
+    let layer = match layer {
+        "background" => Layer::Background,
+        "bottom" => Layer::Bottom,
+        "top" => Layer::Top,
+        "overlay" => Layer::Overlay,
+        _ => {
+            eprintln!("svelte-gpui: a Window's layer is background, bottom, top or overlay, not {layer:?}");
+            return None;
+        }
+    };
+    let mut anchor = Anchor::empty();
+    for edge in attributes.get("anchor").map(String::as_str).unwrap_or("").split_whitespace() {
+        anchor |= match edge {
+            "top" => Anchor::TOP,
+            "bottom" => Anchor::BOTTOM,
+            "left" => Anchor::LEFT,
+            "right" => Anchor::RIGHT,
+            _ => Anchor::empty(),
+        };
+    }
+    Some(LayerShellOptions {
+        namespace: attributes.get("namespace").cloned().unwrap_or_else(|| "svelte-gpui".to_string()),
+        layer,
+        anchor,
+        exclusive_zone: attributes.get("exclusive-zone").and_then(|zone| zone.parse::<f32>().ok()).map(px),
+        margin: attributes.get("margin").and_then(|margin| parse_margin(margin)),
+        keyboard_interactivity: keyboard(attributes.get("keyboard").map(String::as_str)),
+        ..Default::default()
+    })
+}
+
+/// How a layer surface takes the keyboard: `none` (the default), `exclusive` or `on-demand`.
+pub(super) fn keyboard(value: Option<&str>) -> KeyboardInteractivity {
+    match value {
+        Some("exclusive") => KeyboardInteractivity::Exclusive,
+        Some("on-demand") => KeyboardInteractivity::OnDemand,
+        _ => KeyboardInteractivity::None,
+    }
+}
+
+/// `top right bottom left`, or one number for all four.
+fn parse_margin(value: &str) -> Option<(Pixels, Pixels, Pixels, Pixels)> {
+    let numbers: Vec<f32> = value.split_whitespace().filter_map(|part| part.parse().ok()).collect();
+    match numbers.as_slice() {
+        [all] => Some((px(*all), px(*all), px(*all), px(*all))),
+        [top, right, bottom, left] => Some((px(*top), px(*right), px(*bottom), px(*left))),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn attributes(pairs: &[(&str, &str)]) -> HashMap<String, String> {
+        pairs.iter().map(|(name, value)| (name.to_string(), value.to_string())).collect()
+    }
+
+    #[test]
+    fn layer_options_read_anchor_zone_and_keyboard() {
+        let given = attributes(&[("anchor", "top left right"), ("exclusive-zone", "32"), ("keyboard", "on-demand")]);
+        let options = layer_options(&given, "top").unwrap();
+        assert_eq!(options.layer, Layer::Top);
+        assert_eq!(options.anchor, Anchor::TOP | Anchor::LEFT | Anchor::RIGHT);
+        assert_eq!(options.exclusive_zone, Some(px(32.0)));
+        assert_eq!(options.keyboard_interactivity, KeyboardInteractivity::OnDemand);
+        assert_eq!(options.namespace, "svelte-gpui");
+    }
+
+    #[test]
+    fn an_unknown_layer_is_not_a_layer_surface() {
+        assert!(layer_options(&attributes(&[]), "sideways").is_none());
+    }
+
+    #[test]
+    fn margins_are_one_number_or_four() {
+        assert_eq!(parse_margin("8"), Some((px(8.0), px(8.0), px(8.0), px(8.0))));
+        assert_eq!(parse_margin("1 2 3 4"), Some((px(1.0), px(2.0), px(3.0), px(4.0))));
+        assert_eq!(parse_margin("1 2"), None);
+    }
+
+    #[test]
+    fn only_live_attributes_are_followed() {
+        let given = attributes(&[("height", "32"), ("layer", "top"), ("keyboard", "none")]);
+        let live = live_attributes(&given);
+        assert_eq!(live.len(), 2);
+        assert!(!live.contains_key("layer"));
     }
 }
