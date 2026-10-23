@@ -1,6 +1,5 @@
 <script lang="ts">
   import { monitors } from '@neoworks/svelte-gpui'
-  import { Text, Window } from '@neoworks/svelte-gpui/ui'
   import { subscribeTo } from './lib/bus'
   import type { Bus } from './host/bus'
   import type { ViewRegistry } from './host/plugins/views'
@@ -70,12 +69,6 @@
     return resolve(registry, node.type, current) !== undefined
   }
 </script>
-
-{#if environment !== null && environment.testWindow}
-  <Window title="neoshell test" width={280} height={60} style={{ padding: 8 }}>
-    <Text style={{ fontSize: 12 }}>neoshell on {environment.monitors?.join(', ')}</Text>
-  </Window>
-{/if}
 
 {#each nodes as node, index (keyOf(node, index))}
   {#if isReady(node, generation)}

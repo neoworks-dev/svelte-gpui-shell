@@ -27,7 +27,4 @@ export NEOSHELL_CONFIG=${NEOSHELL_CONFIG:-$scratch/config.json}
 export NEOSHELL_SOCKET=$XDG_RUNTIME_DIR/neoshell-port/host.sock
 export NEOSHELL_MONITORS=neoshell-port
 export NEOSHELL_READONLY=1
-export NEOSHELL_WINDOW=1
-# A windowless app is dropped as soon as setup ends unless something holds the workbench;
-# --exit-after-ms does until the host keeps it alive itself.
-exec "$root/scripts/shot.sh" "${SHELL_BUNDLE:-$here/dist/neoshell.js}" "$out" "$seconds" --dev --exit-after-ms 3600000 "$@"
+exec "$root/scripts/shot.sh" "${SHELL_BUNDLE:-$here/dist/neoshell.js}" "$out" "$seconds" --dev "$@"

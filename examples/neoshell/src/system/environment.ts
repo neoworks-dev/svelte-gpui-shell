@@ -11,8 +11,6 @@ import { joinPath } from './paths.js'
 //                      function that is not on the read-only list refuses
 //   NEOSHELL_ALLOW     comma-separated bus functions a read-only run may
 //                      still answer, for testing one against a scratch path
-//   NEOSHELL_WINDOW    1 also opens a small plain window, which is how
-//                      scripts/shot.sh finds an app that has only surfaces
 
 export interface ShellEnvironment {
   configPath: string
@@ -20,7 +18,6 @@ export interface ShellEnvironment {
   monitors: string[] | null
   readOnly: boolean
   allowedFunctions: string[]
-  testWindow: boolean
 }
 
 export function environmentOf(
@@ -34,7 +31,6 @@ export function environmentOf(
     monitors: listOfOrNull(variables.NEOSHELL_MONITORS),
     readOnly: variables.NEOSHELL_READONLY === '1',
     allowedFunctions: listOf(variables.NEOSHELL_ALLOW),
-    testWindow: variables.NEOSHELL_WINDOW === '1',
   }
 }
 
