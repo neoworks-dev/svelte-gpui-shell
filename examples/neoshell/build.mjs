@@ -8,3 +8,8 @@ await build({
   outfile: here("./dist/neoshell.js"),
   watch: process.argv.includes("--watch"),
 });
+
+await build({
+  entry: here("./src/smoke.ts"),
+  outfile: here("./dist/smoke.js"),
+});

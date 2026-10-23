@@ -10,6 +10,8 @@ import weatherBackend from './weather/backend.js'
 import airQualityBackend from './airquality/backend.js'
 import neoshellViews from './neoshell/views.js'
 import quicksettingsViews from './quicksettings/views.js'
+import weatherViews from './weather/views.js'
+import airQualityViews from './airquality/views.js'
 
 // The extension registry. In the bun host an extension was a directory the
 // loader found by scanning for manifest.json and imported at runtime; one GJS
@@ -97,6 +99,7 @@ export const EXTENSIONS: Record<string, ExtensionModule> = {
       ],
     },
     backend: weatherBackend as Plugin.Object,
+    views: weatherViews,
   },
   airquality: {
     manifest: {
@@ -114,5 +117,6 @@ export const EXTENSIONS: Record<string, ExtensionModule> = {
       ],
     },
     backend: airQualityBackend as Plugin.Object,
+    views: airQualityViews,
   },
 }

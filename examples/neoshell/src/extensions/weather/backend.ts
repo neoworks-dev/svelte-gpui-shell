@@ -12,6 +12,7 @@ import {
   stringArrayOf,
 } from '../../lib/openMeteo.js'
 import type { Location } from '../../lib/openMeteo.js'
+import { shortWeekday } from '../../lib/dateFormat.js'
 import { startPolling } from '../../lib/poll.js'
 
 // weather: current conditions for one place as a retained bus topic, from the
@@ -372,7 +373,7 @@ function dayLabelOf(date: string, index: number): string {
   if (Number.isNaN(parsed.getTime())) {
     return date
   }
-  return parsed.toLocaleDateString('en-US', { weekday: 'short' })
+  return shortWeekday(parsed)
 }
 
 function unitLabel(imperial: boolean): string {
