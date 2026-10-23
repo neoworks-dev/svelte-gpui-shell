@@ -7,5 +7,9 @@ const scene = process.env.SCENE ?? "layers";
 await build({
   entry: here("./src/main.ts"),
   outfile: here(`./dist/shell-${scene}.js`),
-  define: { __OUTPUT__: JSON.stringify(output), __SCENE__: JSON.stringify(scene) },
+  define: {
+    __OUTPUT__: JSON.stringify(output),
+    __SCENE__: JSON.stringify(scene),
+    __VIDEO__: JSON.stringify(process.env.VIDEO ?? "/tmp/shell-host-shots/test.mp4"),
+  },
 });

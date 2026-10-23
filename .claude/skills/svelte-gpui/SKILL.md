@@ -54,6 +54,7 @@ are the reference. The app in `examples/demo` uses every feature.
 | `Meter` | `value min max levels color vertical duration style fillStyle` | |
 | `Spinner` | `size color period style`; draws every frame while mounted | |
 | `Overlay` | `side align offset crossOffset at flip shift margin matchWidth passthrough layer focusable keepFocus input onoutside style` + `View` events; drawn above everything, placed against its parent's box | `focus()`, `blur()` |
+| `Video` | `style src loop muted paused rate fit maxFps onready onend onerror`; a file or stream played by GStreamer (loops, muted by default); `fit` is `contain`, `cover` or `fill` | |
 | `Window` | `style title width height appId monitor layer anchor exclusiveZone margin keyboard namespace lock onclose`; its children are drawn in a window of their own, open while it is mounted; with `layer` it is a layer surface | |
 
 `View` is a column. `Button` and `Input` are rows. Text properties (`color`,

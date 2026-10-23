@@ -73,10 +73,18 @@ pub struct Tree {
     pub changed_elements: HashSet<NodeId>,
     /// App elements removed for good, whose ids no longer name a node.
     pub dropped_elements: Vec<NodeId>,
+    /// Videos (`g-video`) created or given new attributes, which the window must bring in step with
+    /// the players behind them.
+    pub changed_videos: HashSet<NodeId>,
+    /// Videos removed for good.
+    pub dropped_videos: Vec<NodeId>,
 }
 
 /// The tag of the node an app's own GPUI view is drawn in.
 pub const ELEMENT_TAG: &str = "g-element";
+
+/// The tag of a video.
+pub const VIDEO_TAG: &str = "g-video";
 
 // Operation codes, generated from protocol.json, which runtime/host/bridge.ts reads too.
 include!(concat!(env!("OUT_DIR"), "/protocol.rs"));
@@ -94,6 +102,8 @@ impl Tree {
             dirty_deep: HashSet::new(),
             changed_elements: HashSet::new(),
             dropped_elements: Vec::new(),
+            changed_videos: HashSet::new(),
+            dropped_videos: Vec::new(),
         };
         tree.nodes.insert(
             ROOT,
@@ -222,6 +232,9 @@ impl Tree {
         if matches!(&node.kind, Kind::Element { tag } if tag == ELEMENT_TAG) {
             self.changed_elements.insert(id);
         }
+        if matches!(&node.kind, Kind::Element { tag } if tag == VIDEO_TAG) {
+            self.changed_videos.insert(id);
+        }
         match parts.get(3) {
             Some(Value::Null) | None => {
                 node.attributes.remove(&name);
@@ -289,6 +302,10 @@ impl Tree {
                 if matches!(&node.kind, Kind::Element { tag } if tag == ELEMENT_TAG) {
                     self.dropped_elements.push(next);
                     self.changed_elements.remove(&next);
+                }
+                if matches!(&node.kind, Kind::Element { tag } if tag == VIDEO_TAG) {
+                    self.dropped_videos.push(next);
+                    self.changed_videos.remove(&next);
                 }
                 pending.extend(node.children);
             }

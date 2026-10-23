@@ -59,6 +59,11 @@ impl Images {
         }
     }
 
+    /// Where relative paths are looked up.
+    pub fn base(&self) -> &Path {
+        &self.base
+    }
+
     /// Forgets what is known about every source, for a reload, so each is looked up again.
     /// The files already cached on disk stay. A job still running may add its result after.
     pub fn reset(&self) {

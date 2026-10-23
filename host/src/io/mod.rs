@@ -41,6 +41,9 @@ pub enum Settle {
     /// An app element's view emitted an event (see `NativeHost::emit`). `call` is the element's node id and the
     /// payload holds the event's `name` and `detail`. It is for the window, and never reaches the app as a call.
     Element,
+    /// A video's player had something to say (see `video`). `call` is the video's node id and the
+    /// payload holds the event's `name`, and its `detail` when it has one. It is for the window.
+    Video,
 }
 
 impl Settle {
@@ -51,6 +54,7 @@ impl Settle {
             Settle::Event => "event",
             Settle::Close => "close",
             Settle::Element => "element",
+            Settle::Video => "video",
         }
     }
 }

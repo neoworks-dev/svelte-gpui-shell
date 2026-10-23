@@ -16,6 +16,8 @@ pub enum Primitive {
     Image,
     Icon,
     Canvas,
+    /// A video file or stream, played by the host.
+    Video,
     Overlay,
     /// A view the app's own crate draws (`Elements`).
     Element,
@@ -34,6 +36,7 @@ impl Primitive {
             "g-image" => Primitive::Image,
             "g-icon" => Primitive::Icon,
             "g-canvas" => Primitive::Canvas,
+            "g-video" => Primitive::Video,
             "g-overlay" => Primitive::Overlay,
             "g-element" => Primitive::Element,
             "g-window" => Primitive::Window,
@@ -55,7 +58,7 @@ impl Primitive {
                 style.row = Some(true);
                 style.cursor = Some(gpui::CursorStyle::IBeam);
             }
-            Primitive::Image | Primitive::Icon | Primitive::Canvas => {
+            Primitive::Image | Primitive::Icon | Primitive::Canvas | Primitive::Video => {
                 style.row = Some(false);
                 style.shrink = Some(0.0);
             }

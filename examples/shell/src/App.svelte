@@ -9,6 +9,7 @@
   import Empty from "./Empty.svelte";
   import Dock from "./Dock.svelte";
   import Lock from "./Lock.svelte";
+  import VideoScene from "./Video.svelte";
 
   const present = $derived(monitors.list.some((monitor) => monitor.name === __OUTPUT__));
 </script>
@@ -28,6 +29,10 @@
     <Dock monitor={__OUTPUT__} tall={false} />
   {:else if __SCENE__ === "lock"}
     <Lock monitor={__OUTPUT__} />
+  {:else if __SCENE__ === "video"}
+    <VideoScene monitor={__OUTPUT__} source={__VIDEO__} looping={true} />
+  {:else if __SCENE__ === "video-once"}
+    <VideoScene monitor={__OUTPUT__} source={__VIDEO__} looping={false} />
   {:else if __SCENE__ === "empty"}
     <Empty monitor={__OUTPUT__} />
   {/if}

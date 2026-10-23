@@ -16,6 +16,7 @@ mod reports;
 mod script;
 mod scrolling;
 mod session_lock;
+mod videos;
 mod windowing;
 mod windows;
 

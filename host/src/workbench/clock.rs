@@ -55,6 +55,7 @@ impl Workbench {
         if version != self.seen_version {
             self.seen_version = version;
             self.sync_windows(cx);
+            self.sync_videos(cx);
             self.flush_dirty(cx);
             cx.notify();
         }

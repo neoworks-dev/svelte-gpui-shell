@@ -22,6 +22,7 @@ mod runtime;
 mod sourcemap;
 mod style;
 mod tree;
+mod video;
 mod watch;
 mod window_control;
 mod workbench;

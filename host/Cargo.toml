@@ -11,6 +11,11 @@ path = "src/lib.rs"
 name = "svelte-gpui"
 path = "src/main.rs"
 
+[features]
+default = ["video"]
+# `Video`, played through GStreamer, which the host then links against and needs installed.
+video = ["dep:gstreamer", "dep:gstreamer-app", "dep:gstreamer-video"]
+
 [build-dependencies]
 serde_json = "1"
 
@@ -30,3 +35,6 @@ libc = "0.2"
 ttf-parser = "0.25"
 image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp", "gif"] }
 
+gstreamer = { version = "0.25", optional = true }
+gstreamer-app = { version = "0.25", optional = true }
+gstreamer-video = { version = "0.25", optional = true }

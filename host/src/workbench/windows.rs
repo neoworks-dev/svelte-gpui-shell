@@ -305,6 +305,12 @@ impl Workbench {
                 window.drop_image(image).ok();
             }
         }
+        let retired: Vec<_> = std::mem::take(&mut *self.interaction.retired_videos.borrow_mut());
+        for player in retired {
+            for image in player.borrow_mut().release() {
+                window.drop_image(image).ok();
+            }
+        }
         let tree = self.svelte.tree.clone();
         let tree = tree.borrow();
         let painter = Painter::new(&tree, &self.interaction, None);

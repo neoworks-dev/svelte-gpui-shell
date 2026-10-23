@@ -434,6 +434,30 @@ Limits: an overlay inside another is drawn in place after its content, so it is 
 `overflow: "hidden"` on the content around it. The window's size is read when the overlay is laid out; an overlay
 inside a part of the window that did not redraw is not moved when the window is resized.
 
+## Video
+
+A video file or stream, played by the host through GStreamer and drawn in its box. It loops and is
+muted unless told otherwise, which is what a live wallpaper wants. The host decodes with VA-API when
+the system has it and scales every frame to the size the box shows, so a video larger than the
+screen costs little more than one that fits. A host built without the `video` feature draws nothing
+and the video's `onerror` fires.
+
+| Prop | Type | |
+|---|---|---|
+| `src` | `string` | A path (relative ones start in the app's directory), a `file://` URI, or a URL GStreamer can read. |
+| `loop` | `boolean` | Plays again when it ends, without a gap. On by default. |
+| `muted` | `boolean` | No sound. On by default; off decodes the audio too. Changing it, or `src` or `maxFps`, starts the pipeline again. |
+| `paused` | `boolean` | |
+| `rate` | `number` | 0.1 to 8, 1 by default. A change seeks to where it is. |
+| `fit` | `"contain"` \| `"cover"` \| `"fill"` | How the picture fills the box. `"contain"` by default. |
+| `maxFps` | `number` | Drops frames above this rate before they are converted. |
+| `style` | `Style` | The box. `radius` rounds the picture. |
+| `onready` | `(e: { duration: number }) => void` | The video opened; `duration` is in milliseconds. |
+| `onend` | `() => void` | It reached its end, which a looping video never does. |
+| `onerror` | `(e: { message: string }) => void` | It could not be opened or stopped playing. |
+
+`examples/shell` has a wallpaper with controls (`SCENE=video`, `VIDEO=/path/to/file.mp4`).
+
 ## Window
 
 A window of its own (`g-window`): its children are drawn there instead of where it sits. It
