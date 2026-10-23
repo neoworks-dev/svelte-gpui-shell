@@ -1,5 +1,6 @@
 import { files, processes } from '@neoworks/svelte-gpui'
 import type { FilePaths } from '@neoworks/svelte-gpui'
+import { baseNameOf } from './paths.js'
 
 // The filesystem calls the extension backends make. Every one is a promise,
 // because the host does the work on a thread. Failures keep the shape the
